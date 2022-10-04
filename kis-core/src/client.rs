@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use crate::config::Config;
+use crate::response::{Parse, Validate};
 use anyhow::{anyhow, Result};
-
 pub async fn create_token(config: &Config) -> Result<String> {
     let token_request = kis_api::models::CreateTokenRequest::new(
         kis_api::models::create_token_request::GrantType::ClientCredentials,
@@ -56,18 +56,11 @@ pub async fn get_doemstic_stock_price_list(
         fid_org_adj_prc,
     )
     .await?;
-    match r.rt_cd.as_str() {
-        "0" => Ok(r.output.expect("No output get_doemstic_stock_price_list")),
-        _ => Err(anyhow!(
-            "get_doemstic_stock_price_list {} {}",
-            r.msg_cd,
-            r.msg1
-        )),
-    }
+    r.validate()?.parse()
 }
 pub async fn get_overseas_balance(
     config: &Config,
-) -> Result<kis_api::models::GetOverseasBalanceResponse> {
+) -> Result<impl Validate<kis_api::models::GetOverseasBalanceResponse>> {
     let tr_id = if config.is_paper {
         "VTRP6504R"
     } else {
@@ -87,10 +80,7 @@ pub async fn get_overseas_balance(
         Some("P"),
     )
     .await?;
-    match r.rt_cd.as_str() {
-        "0" => Ok(r),
-        _ => Err(anyhow!("get_overseas_balance {} {}", r.msg_cd, r.msg1)),
-    }
+    r.validate()
 }
 pub async fn get_overseas_stock_price_list(
     config: &Config,
@@ -98,7 +88,7 @@ pub async fn get_overseas_stock_price_list(
     ticker: &str,
     interval: crate::types::Interval,
     is_adjusted: bool,
-) -> Result<kis_api::models::GetOverseasStockPriceListResponse> {
+) -> Result<impl Validate<kis_api::models::GetOverseasStockPriceListResponse>> {
     let modp = if is_adjusted { "1" } else { "0" };
     let r = kis_api::apis::overseas_stock_api::get_overseas_stock_price_list(
         &config.configuration,
@@ -113,20 +103,13 @@ pub async fn get_overseas_stock_price_list(
         modp,
     )
     .await?;
-    match r.rt_cd.as_str() {
-        "0" => Ok(r),
-        _ => Err(anyhow!(
-            "get_overseas_stock_price_list {} {}",
-            r.msg_cd,
-            r.msg1
-        )),
-    }
+    r.validate()
 }
 pub async fn get_overseas_stock_price(
     config: &Config,
     exchange: crate::types::Exchange,
     ticker: &str,
-) -> Result<kis_api::models::GetOverseasStockPriceResponse> {
+) -> Result<impl Validate<kis_api::models::GetOverseasStockPriceResponse>> {
     let r = kis_api::apis::overseas_stock_api::get_overseas_stock_price(
         &config.configuration,
         &config.appkey,
@@ -137,12 +120,11 @@ pub async fn get_overseas_stock_price(
         ticker,
     )
     .await?;
-    match r.rt_cd.as_str() {
-        "0" => Ok(r),
-        _ => Err(anyhow!("get_overseas_stock_price {} {}", r.msg_cd, r.msg1)),
-    }
+    r.validate()
 }
-pub async fn get_overseas_dayornight(config: &Config) -> Result<bool> {
+pub async fn get_overseas_dayornight(
+    config: &Config,
+) -> Result<impl Validate<kis_api::models::GetDayOrNight200Response>> {
     let r = kis_api::apis::overseas_stock_api::get_day_or_night(
         &config.configuration,
         &config.appkey,
@@ -150,21 +132,14 @@ pub async fn get_overseas_dayornight(config: &Config) -> Result<bool> {
         "JTTT3010R",
     )
     .await?;
-    match r.rt_cd.as_str() {
-        "0" => match r.output.expect("Invalid output").psbl_yn.as_str() {
-            "Y" => Ok(true),
-            "N" => Ok(false),
-            _ => Err(anyhow!("get_overseas_dayornight Unkown output")),
-        },
-        _ => Err(anyhow!("get_overseas_dayornight {} {}", r.msg_cd, r.msg1)),
-    }
+    r.validate()
 }
 #[allow(clippy::collapsible_else_if)]
 pub async fn get_overseas_stock_list(
     config: &Config,
     market: crate::types::Market,
     is_night: bool,
-) -> Result<kis_api::models::GetOverseasStockListResponse> {
+) -> Result<impl Validate<kis_api::models::GetOverseasStockListResponse>> {
     let tr_id = if config.is_paper {
         if is_night {
             "VTTT3012R"
@@ -194,10 +169,7 @@ pub async fn get_overseas_stock_list(
         Some("P"),
     )
     .await?;
-    match r.rt_cd.as_str() {
-        "0" => Ok(r),
-        _ => Err(anyhow!("get_overseas_stock_list {} {}", r.msg_cd, r.msg1)),
-    }
+    r.validate()
 }
 pub async fn get_doemstic_stock_possible_order(
     config: &Config,
@@ -205,7 +177,7 @@ pub async fn get_doemstic_stock_possible_order(
     price: u32,
     cma: bool,
     overseas: bool,
-) -> Result<kis_api::models::GetDomesticStockPossibleOrderResponseAllOfOutput> {
+) -> Result<impl Validate<kis_api::models::GetDomesticStockPossibleOrderResponse>> {
     let tr_id = if config.is_paper {
         "VTTC8908R"
     } else {
@@ -230,15 +202,7 @@ pub async fn get_doemstic_stock_possible_order(
         Some("P"),
     )
     .await?;
-    match r.rt_cd.as_str() {
-        "0" => {
-            let boxed = r
-                .output
-                .expect("No output get_doemstic_stock_possible_order");
-            Ok(*boxed)
-        }
-        _ => panic!("{} {}", r.msg_cd, r.msg1),
-    }
+    r.validate()
 }
 pub async fn get_domestic_stock_price(
     config: &Config,
@@ -253,13 +217,7 @@ pub async fn get_domestic_stock_price(
         ticker,
     )
     .await?;
-    match r.rt_cd.as_str() {
-        "0" => {
-            let boxed = r.output.expect("No output get_domestic_stock_price");
-            Ok(*boxed)
-        }
-        _ => Err(anyhow!("get_domestic_stock_price {} {}", r.msg_cd, r.msg1)),
-    }
+    r.validate()?.parse()
 }
 pub async fn get_domestic_stock_list(
     config: &Config,
@@ -294,8 +252,5 @@ pub async fn get_domestic_stock_list(
         Some("P"),
     )
     .await?;
-    match r.rt_cd.as_str() {
-        "0" => Ok(r),
-        _ => Err(anyhow!("get_domestic_stock_list {} {}", r.msg_cd, r.msg1)),
-    }
+    r.validate()
 }

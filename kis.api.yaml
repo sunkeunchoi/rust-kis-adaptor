@@ -1,0 +1,3950 @@
+openapi: "3.0.2"
+info:
+  title: Korean Investment API Wrapper
+  version: "1.0"
+servers:
+  - url: https://openapivts.koreainvestment.com:29443
+    description: 모의
+  - url: https://openapi.koreainvestment.com:9443
+    description: 실전
+
+tags:
+  - name: OAuth
+    description: OAuth
+  - name: DomesticStock
+    description: 국내주식
+  - name: DomesticFuture
+    description: 국내선물
+  - name: OverseasStock
+    description: 해외주식
+  - name: OverseasFuture
+    description: 해외선물
+
+paths:
+  /oauth2/tokenP:
+    post:
+      tags: [OAuth]
+      summary: 접근토큰발급
+      description: 본인 계좌에 필요한 인증 절차로, 인증을 통해 접근 토큰을 부여받아 오픈API 활용이 가능합니다.
+      operationId: createToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTokenRequest"
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateTokenResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /oauth2/revokeP:
+    post:
+      tags: [OAuth]
+      summary: 접근토큰폐기
+      description: 부여받은 접큰토큰을 더 이상 활용하지 않을 때 사용합니다.
+      operationId: deleteToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteTokenRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteTokenResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /uapi/hashkey:
+    post:
+      tags: [OAuth]
+      summary: 해쉬키
+      description: 해쉬키(Hashkey)는 보안을 위한 요소로 사용자가 보낸 요청 값을 중간에 탈취하여 변조하지 못하도록 하는데 사용됩니다. 보안을 위해 POST로 보내는 요청(주로 주문/정정/취소 API 해당)은 사전에 body 값 암호화가 필요하며, 이 때 hashkey를 활용한 암호화를 진행합니다.
+      operationId: createHashkey
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              # additionalProperties:
+              # type: string
+            example:
+              ORD_PRCS_DVSN_CD: 02
+              CANO: 계좌번호
+              ACNT_PRDT_CD: 03
+              SLL_BUY_DVSN_CD: 02
+              SHTN_PDNO: 101S06
+              ORD_QTY: 1
+              UNIT_PRICE: 370
+              NMPR_TYPE_CD: ""
+              KRX_NMPR_CNDT_CD: ""
+              CTAC_TLNO: ""
+              FUOP_ITEM_DVSN_CD: ""
+              ORD_DVSN_CD: 02
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateHashKeyResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/overseas-stock/v1/trading/order:
+    post:
+      summary: 해외주식 주문
+      description: >
+        해외주식 주문 API입니다.
+        해외 거래소 운영시간(한국시간 기준)
+          1. 미국 : 23:30 ~ 06:00 (썸머타임 적용 시 22:30 ~ 05:00)
+          2. 일본 : (오전) 09:00 ~ 11:30, (오후) 12:30 ~ 15:00
+          3. 상해 : 10:30 ~ 16:00
+          4. 홍콩 : (오전) 10:30 ~ 13:00, (오후) 14:00 ~ 17:00
+      tags: [OverseasStock]
+      security: [bearerAuth: []]
+      operationId: createOverseasOrder
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum:
+              [
+                JTTT1002U,
+                JTTT1006U,
+                TTTS0308U,
+                TTTS0307U,
+                TTTS0202U,
+                TTTS1005U,
+                TTTS1002U,
+                TTTS1001U,
+                TTTS0305U,
+                TTTS0304U,
+                TTTS0311U,
+                TTTS0310U,
+                VTTT1002U,
+                VTTT1001U,
+                VTTS0308U,
+                VTTS0307U,
+                VTTS0202U,
+                VTTS1005U,
+                VTTS1002U,
+                VTTS1001U,
+                VTTS0305U,
+                VTTS0304U,
+                VTTS0311U,
+                VTTS0310U,
+              ]
+          example: VTTT1002U
+          description: >
+            실전투자
+              - `JTTT1002U` 미국 매수 주문 
+              - `JTTT1006U` 미국 매도 주문 
+              - `TTTS0308U` 일본 매수 주문 
+              - `TTTS0307U` 일본 매도 주문 
+              - `TTTS0202U` 상해 매수 주문 
+              - `TTTS1005U` 상해 매도 주문 
+              - `TTTS1002U` 홍콩 매수 주문 
+              - `TTTS1001U` 홍콩 매도 주문 
+              - `TTTS0305U` 심천 매수 주문 
+              - `TTTS0304U` 심천 매도 주문 
+              - `TTTS0311U` 베트남 매수 주문 
+              - `TTTS0310U` 베트남 매도 주문 
+            모의투자
+              - `VTTT1002U` 미국 매수 주문 
+              - `VTTT1001U` 미국 매도 주문 
+              - `VTTS0308U` 일본 매수 주문 
+              - `VTTS0307U` 일본 매도 주문 
+              - `VTTS0202U` 상해 매수 주문 
+              - `VTTS1005U` 상해 매도 주문 
+              - `VTTS1002U` 홍콩 매수 주문 
+              - `VTTS1001U` 홍콩 매도 주문 
+              - `VTTS0305U` 심천 매수 주문 
+              - `VTTS0304U` 심천 매도 주문 
+              - `VTTS0311U` 베트남 매수 주문 
+              - `VTTS0310U` 베트남 매도 주문
+        - $ref: "#/components/parameters/custtype"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOverseasOrderRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateOrderResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/overseas-stock/v1/trading/dayornight:
+    get:
+      summary: 해외주식 주야간원장구분조회
+      description: 해외주식의 주간야간 조회 가능여부를 확인하는 API로, Response Body의 PSBL_YN(주야간 원장 구분) 값으로 tr_id를 구분해서 API룰 호출합니다. 대상 API=해외주식 미체결내역, 해외주식 잔고, 해외주식 주문체결내역 - Request Body 값이 없어 GET/POST 모두로 호출 가능합니다. 예) 실제계좌로 해외주식 주문체결내역을 API 호출로 조회하고자 할 때, 해외주식 주야간원장구분조회의 Response Body인 PSBL_YN(주야간 원장 구분)값이 Y(야간)일 경우 JTTT3001R 이용, N(주간)일 경우 TTTS3035R 이용
+      tags: [OverseasStock]
+      security: [bearerAuth: []]
+      operationId: getDayOrNight
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [JTTT3010R]
+          description: 실전투자/모의투자=JTTT3010R
+          example: JTTT3010R
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BasicResponse"
+                  - type: object
+                    properties:
+                      output:
+                        type: object
+                        properties:
+                          PSBL_YN:
+                            type: string
+                            maxLength: 16
+                            description: 주야간 원장 구분
+                        required: [PSBL_YN]
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/overseas-price/v1/quotations/price:
+    get:
+      summary: 해외주식 현재체결가
+      description: 해외주식종목의 현재체결가를 확인하는 API 입니다.
+      operationId: getOverseasStockPrice
+      tags: [OverseasStock]
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [HHDFS00000300]
+          description: 실전투자/모의투자=HHDFS00000300
+          example: HHDFS00000300
+        - $ref: "#/components/parameters/AUTH"
+        - $ref: "#/components/parameters/EXCD"
+        - $ref: "#/components/parameters/SYMB"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetOverseasStockPriceResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/overseas-price/v1/quotations/dailyprice:
+    get:
+      summary: 해외주식 기간별시세
+      description: 해외주식의 기간별시세를 확인하는 API 입니다. 실전계좌/모의계좌의 경우, 한 번의 호출에 최대 100건까지 확인 가능합니다.
+      operationId: getOverseasStockPriceList
+      tags: [OverseasStock]
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [HHDFS76240000]
+          description: 실전투자/모의투자=HHDFS76240000
+          example: HHDFS76240000
+        - $ref: "#/components/parameters/AUTH"
+        - $ref: "#/components/parameters/EXCD"
+        - $ref: "#/components/parameters/SYMB"
+        - $ref: "#/components/parameters/GUBN"
+        - $ref: "#/components/parameters/BYMD"
+        - $ref: "#/components/parameters/MODP"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetOverseasStockPriceListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/overseas-stock/v1/trading/inquire-present-balance:
+    get:
+      summary: 해외주식 체결기준현재잔고
+      description: 해외주식 잔고를 체결 기준으로 확인하는 API 입니다.
+      tags: [OverseasStock]
+      security: [bearerAuth: []]
+      operationId: getOverseasBalance
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [CTRP6504R, VTRP6504R]
+          description: 실전투자=CTRP6504R 모의투자=VTRP6504R
+          example: VTRP6504R
+        - $ref: "#/components/parameters/custtype"
+        - $ref: "#/components/parameters/CANO"
+        - $ref: "#/components/parameters/ACNT_PRDT_CD"
+        - $ref: "#/components/parameters/WCRC_FRCR_DVSN_CD"
+        - $ref: "#/components/parameters/NATN_CD"
+        - $ref: "#/components/parameters/TR_MKET_CD"
+        - $ref: "#/components/parameters/INQR_DVSN_CD"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetOverseasBalanceResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/overseas-stock/v1/trading/inquire-balance:
+    get:
+      summary: 해외주식 잔고
+      description: 해외주식 잔고를 조회하는 API 입니다.
+      operationId: getOverseasStockList
+      tags: [OverseasStock]
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [JTTT3012R, TTTS3012R, VTTT3012R, VTTS3012R]
+          description: >
+            해외주식 잔고:
+              - PSBL_YN(주야간 원장 구분) 값으로 tr_id 구분해서 API 호출 
+              - 해외주식주문 > 해외주식 주야간원장구분조회 API문서 참조 `/uapi/overseas-stock/v1/trading/dayornight`
+              * `JTTT3012R` 실전투자 야간용 `PSBL_YN=Y`
+              * `TTTS3012R` 실전투자 주간용 `PSBL_YN=N`
+              * `VTTT3012R` 모의투자 야간용 `PSBL_YN=Y`
+              * `VTTS3012R` 모의투자 주간용 `PSBL_YN=N`
+          example: VTTT3012R
+        - $ref: "#/components/parameters/custtype"
+        - $ref: "#/components/parameters/CANO"
+        - $ref: "#/components/parameters/ACNT_PRDT_CD"
+        - $ref: "#/components/parameters/OVRS_EXCG_CD"
+        - $ref: "#/components/parameters/TR_CRCY_CD"
+        - $ref: "#/components/parameters/CTX_AREA_FK200"
+        - $ref: "#/components/parameters/CTX_AREA_NK200"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetOverseasStockListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/domestic-stock/v1/quotations/inquire-daily-price:
+    get:
+      summary: 주식현재가 일자별
+      description: 주식현재가 일자별 API입니다. 일/주/월별 주가를 확인할 수 있으며 최근 30일(주,별)로 제한되어 있습니다.
+      tags: [DomesticStock]
+      security: [bearerAuth: []]
+      operationId: getDomesticStockPriceList
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [FHKST01010100]
+          description: 실전투자/모의투자 FHKST01010400=주식현재가 시세
+          example: FHKST01010400
+        - $ref: "#/components/parameters/FID_COND_MRKT_DIV_CODE"
+        - $ref: "#/components/parameters/FID_INPUT_ISCD"
+        - $ref: "#/components/parameters/FID_PERIOD_DIV_CODE"
+        - $ref: "#/components/parameters/FID_ORG_ADJ_PRC"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetDomesticStockPriceListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/domestic-stock/v1/quotations/inquire-price:
+    get:
+      summary: 주식현재가 시세
+      description: 주식 현재가 시세 API입니다. 실시간 시세를 원하신다면 웹소켓 API를 활용하세요.
+      tags: [DomesticStock]
+      security: [bearerAuth: []]
+      operationId: getDomesticStockPrice
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [FHKST01010100]
+          description: 실전투자/모의투자 FHKST01010100=주식현재가 시세
+          example: FHKST01010100
+        - $ref: "#/components/parameters/FID_COND_MRKT_DIV_CODE"
+        - $ref: "#/components/parameters/FID_INPUT_ISCD"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetDomesticStockPriceResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/domestic-stock/v1/trading/order-cash:
+    post:
+      summary: 주식주문 현금
+      description: 국내주식주문(현금) API 입니다. * 신용매수는 별도의 API가 준비되어 있습니다.
+      operationId: createDomesticStockOrder
+      tags: [DomesticStock]
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - $ref: "#/components/parameters/hashkey"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [TTTC0802U, TTTC0801U, VTTC0802U, VTTC0801U]
+          description: >
+            주식 현금:
+              * `TTTC0802U` 실전투자 매수 주문
+              * `TTTC0801U` 실전투자 매도 주문
+              * `VTTC0802U` 모의투자 매수 주문
+              * `VTTC0801U` 모의투자 매도 주문
+          example: VTTC0802U
+        - $ref: "#/components/parameters/custtype"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDomesticOrderRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateOrderResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/overseas-stock/v1/trading/inquire-psamount:
+    get:
+      summary: 해외주식 매수가능금액조회
+      description: 해외주식 매수가능금액조회 API입니다. 모의투자는 사용 불가합니다.
+      operationId: getOverseasPossibleOrder
+      tags: [OverseasStock]
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [JTTT3007R, TTTS3007R]
+          description: >
+            실전투자 
+             - `JTTT3007R` PSBL_YN(주야간 원장 구분) = 'Y' (야간용) 
+             - `TTTS3007R` PSBL_YN(주야간 원장 구분) = 'N' (주간용)
+          example: JTTT3007R
+        - $ref: "#/components/parameters/custtype"
+        - $ref: "#/components/parameters/CANO"
+        - $ref: "#/components/parameters/ACNT_PRDT_CD"
+        - $ref: "#/components/parameters/OVRS_EXCG_CD"
+        - $ref: "#/components/parameters/OVRS_ORD_UNPR"
+        - $ref: "#/components/parameters/ITEM_CD"
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetOverseasPossibleOrderResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/overseas-stock/v1/trading/inquire-ccnl:
+    get:
+      summary: 해외주식 주문체결내역
+      description: 일정 기간의 해외주식 주문 체결 내역을 확인하는 API입니다.
+      operationId: getOverseasOrderList
+      tags: [OverseasStock]
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [JTTT3001R, TTTS3035R, VTTT3001R, VTTS3035R]
+          description: >
+            실전투자 
+             - `JTTT3001R` PSBL_YN(주야간 원장 구분) = 'Y' (야간용) 
+             - `TTTS3035R` PSBL_YN(주야간 원장 구분) = 'N' (주간용) 
+
+            모의투자
+             - `VTTT3001R` PSBL_YN(주야간 원장 구분) = 'Y' (야간용) 
+             - `VTTS3035R` PSBL_YN(주야간 원장 구분) = 'N' (주간용)
+          example: VTTT3001R
+        - $ref: "#/components/parameters/custtype"
+        - $ref: "#/components/parameters/CANO"
+        - $ref: "#/components/parameters/ACNT_PRDT_CD"
+        - $ref: "#/components/parameters/PDNO"
+        - $ref: "#/components/parameters/ORD_STRT_DT"
+        - $ref: "#/components/parameters/ORD_END_DT"
+        - $ref: "#/components/parameters/SLL_BUY_DVSN"
+        - $ref: "#/components/parameters/CCLD_NCCS_DVSN"
+        - $ref: "#/components/parameters/OVRS_EXCG_CD"
+        - $ref: "#/components/parameters/SORT_SQN"
+        - $ref: "#/components/parameters/ORD_DT"
+        - $ref: "#/components/parameters/ORD_GNO_BRNO"
+        - $ref: "#/components/parameters/ODNO"
+        - $ref: "#/components/parameters/CTX_AREA_NK200"
+        - $ref: "#/components/parameters/CTX_AREA_FK200"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetOverseasOrderListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/overseas-stock/v1/trading/inquire-nccs:
+    get:
+      summary: 해외주식 미체결내역
+      description: 접수된 해외주식 주문 중 체결되지 않은 미체결 내역을 조회하는 API입니다.
+      operationId: getOverseasOpenOrderList
+      tags: [OverseasStock]
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [JTTT3018R, TTTS3018R, VTTT3018R, VTTS3018R]
+          description: >
+            실전투자 
+             - `JTTT3018R` PSBL_YN(주야간 원장 구분) = 'Y' (야간용) 
+             - `TTTS3018R` PSBL_YN(주야간 원장 구분) = 'N' (주간용) 
+
+            모의투자
+             - `VTTT3018R` PSBL_YN(주야간 원장 구분) = 'Y' (야간용) 
+             - `VTTS3018R` PSBL_YN(주야간 원장 구분) = 'N' (주간용)
+          example: VTTS3018R
+        - $ref: "#/components/parameters/custtype"
+        - $ref: "#/components/parameters/CANO"
+        - $ref: "#/components/parameters/ACNT_PRDT_CD"
+        - $ref: "#/components/parameters/OVRS_EXCG_CD"
+        - $ref: "#/components/parameters/SORT_SQN"
+        - $ref: "#/components/parameters/CTX_AREA_FK200"
+        - $ref: "#/components/parameters/CTX_AREA_NK200"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetOverseasOpenOrderResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /uapi/domestic-stock/v1/trading/inquire-psbl-rvsecncl:
+    get:
+      summary: 주식정정취소가능주문조회
+      description: 주식정정취소가능주문조회 API입니다. 한 번의 호출에 최대 50건까지 확인 가능하며, 이후의 값은 연속조회를 통해 확인하실 수 있습니다.
+      operationId: getDomesticCancelableOrder
+      tags: [DomesticStock]
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [TTTC8036R]
+          description: 실전투자 TTTC8036R=주식 정정 취소 가능 주문 조회
+          example: TTTC8036R
+        - $ref: "#/components/parameters/custtype"
+        - $ref: "#/components/parameters/CANO"
+        - $ref: "#/components/parameters/ACNT_PRDT_CD"
+        - $ref: "#/components/parameters/CTX_AREA_FK100"
+        - $ref: "#/components/parameters/CTX_AREA_NK100"
+        - $ref: "#/components/parameters/INQR_DVSN_1"
+        - $ref: "#/components/parameters/INQR_DVSN_2"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetDomesticCancelableOrderResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /uapi/domestic-stock/v1/trading/inquire-daily-ccld:
+    get:
+      summary: 주식일별주문체결조회
+      description: 주식일별주문체결조회 API입니다. 실전계좌의 경우, 한 번의 호출에 최대 100건까지 확인 가능하며, 이후의 값은 연속조회를 통해 확인하실 수 있습니다. 모의계좌의 경우, 한 번의 호출에 최대 15건까지 확인 가능하며, 이후의 값은 연속조회를 통해 확인하실 수 있습니다.
+      operationId: getDomesticOrderList
+      tags: [DomesticStock]
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [TTTC8001R, CTSC9115R, VTTC8001R, VTSC9115R]
+          description: >
+            실전투자
+            `TTTC8001R` : 주식 일별 주문 체결 조회(3개월이내) 
+            `CTSC9115R` : 주식 일별 주문 체결 조회(3개월이전) 
+            모의투자 
+            `VTTC8001R` : 주식 일별 주문 체결 조회(3개월이내) 
+            `VTSC9115R` : 주식 일별 주문 체결 조회(3개월이전) 
+            - 일별 조회로, 당일 주문내역은 지연될 수 있습니다.
+          example: VTTC8001R
+        - $ref: "#/components/parameters/custtype"
+        - $ref: "#/components/parameters/CANO"
+        - $ref: "#/components/parameters/ACNT_PRDT_CD"
+        - $ref: "#/components/parameters/INQR_STRT_DT"
+        - $ref: "#/components/parameters/INQR_END_DT"
+        - $ref: "#/components/parameters/SLL_BUY_DVSN_CD"
+        - $ref: "#/components/parameters/ORDER_INQR_DVSN"
+        - $ref: "#/components/parameters/PDNO"
+        - $ref: "#/components/parameters/CCLD_DVSN"
+        - $ref: "#/components/parameters/ORD_GNO_BRNO"
+        - $ref: "#/components/parameters/ODNO"
+        - $ref: "#/components/parameters/INQR_DVSN_3"
+        - $ref: "#/components/parameters/ORDER_INQR_DVSN_1"
+        - $ref: "#/components/parameters/CTX_AREA_FK100"
+        - $ref: "#/components/parameters/CTX_AREA_NK100"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetDomesticOrderListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/domestic-stock/v1/trading/inquire-balance:
+    get:
+      summary: 주식잔고조회
+      description: 주식 잔고조회 API입니다. 실전계좌의 경우, 한 번의 호출에 최대 50건까지 확인 가능하며, 이후의 값은 연속조회를 통해 확인하실 수 있습니다. 모의계좌의 경우, 한 번의 호출에 최대 20건까지 확인 가능하며, 이후의 값은 연속조회를 통해 확인하실 수 있습니다.
+      operationId: getDomesticStockList
+      tags: [DomesticStock]
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [TTTC8434R, VTTC8434R]
+          description: >
+            주식 잔고 조회:
+              * `TTTC8434R` 실전투자
+              * `VTTC8434R` 모의투자
+          example: VTTC8434R
+        - $ref: "#/components/parameters/custtype"
+        - $ref: "#/components/parameters/CANO"
+        - $ref: "#/components/parameters/ACNT_PRDT_CD"
+        - $ref: "#/components/parameters/AFHR_FLPR_YN"
+        - $ref: "#/components/parameters/OFL_YN"
+        - $ref: "#/components/parameters/INQR_DVSN"
+        - $ref: "#/components/parameters/UNPR_DVSN"
+        - $ref: "#/components/parameters/FUND_STTL_ICLD_YN"
+        - $ref: "#/components/parameters/FNCG_AMT_AUTO_RDPT_YN"
+        - $ref: "#/components/parameters/PRCS_DVSN"
+        - $ref: "#/components/parameters/CTX_AREA_FK100"
+        - $ref: "#/components/parameters/CTX_AREA_NK100"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetDomesticStockListResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /uapi/domestic-stock/v1/trading/inquire-psbl-order:
+    get:
+      summary: 매수가능 조회 API입니다. 실전계좌/모의계좌의 경우, 한 번의 호출에 최대 1건까지 확인 가능합니다.
+      operationId: getDomesticStockPossibleOrder
+      tags: [DomesticStock]
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: "#/components/parameters/appkey"
+        - $ref: "#/components/parameters/appsecret"
+        - name: tr_id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 13
+            enum: [TTTC8908R, VTTC8908R]
+          description: >
+            매수 가능 조회:
+              * `TTTC8908R` 실전투자
+              * `VTTC8908R` 모의투자
+          example: VTTC8908R
+        - $ref: "#/components/parameters/custtype"
+        - $ref: "#/components/parameters/CANO"
+        - $ref: "#/components/parameters/ACNT_PRDT_CD"
+        - $ref: "#/components/parameters/PDNO"
+        - $ref: "#/components/parameters/ORD_UNPR"
+        - $ref: "#/components/parameters/ORD_DVSN"
+        - $ref: "#/components/parameters/CMA_EVLU_AMT_ICLD_YN"
+        - $ref: "#/components/parameters/OVRS_ICLD_YN"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetDomesticStockPossibleOrderResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  parameters:
+    OVRS_ORD_UNPR:
+      name: OVRS_ORD_UNPR
+      required: true
+      in: query
+      description: 해외주문단가 (23.8) 정수부분 23자리, 소수부분 8자리
+      schema:
+        type: string
+        maxLength: 27
+    ITEM_CD:
+      name: ITEM_CD
+      required: true
+      in: query
+      description: 종목코드
+      schema:
+        type: string
+        maxLength: 12
+    ORD_DT:
+      name: ORD_DT
+      required: true
+      in: query
+      description: 주문일자
+      schema:
+        type: string
+        maxLength: 8
+        example: ""
+    SLL_BUY_DVSN:
+      name: SLL_BUY_DVSN
+      required: true
+      in: query
+      description: 매도매수구분 00=전체 01=매도 02=매수
+      schema:
+        type: string
+        maxLength: 2
+        enum: ["00", "01", "02"]
+        example: "00"
+    CCLD_NCCS_DVSN:
+      name: CCLD_NCCS_DVSN
+      required: true
+      in: query
+      description: 체결미체결구분 00=전체 01=체결 02=미체결
+      schema:
+        type: string
+        maxLength: 2
+        enum: ["00", "01", "02"]
+        example: "00"
+    ORD_STRT_DT:
+      name: ORD_STRT_DT
+      required: true
+      in: query
+      description: 주문시작일자 YYYYMMDD 형식
+      schema:
+        type: string
+        maxLength: 8
+    ORD_END_DT:
+      name: ORD_END_DT
+      required: true
+      in: query
+      description: 주문종료일자 YYYYMMDD 형식
+      schema:
+        type: string
+        maxLength: 8
+    SORT_SQN:
+      name: SORT_SQN
+      required: true
+      in: query
+      description: 정렬순서 DS=정순 그외=역순
+      schema:
+        type: string
+        maxLength: 2
+        enum: ["DS", "AS"]
+        example: "DS"
+    INQR_DVSN_1:
+      name: INQR_DVSN_1
+      required: true
+      in: query
+      description: 0=조회순서 1=주문순 2=종목순
+      schema:
+        type: string
+        maxLength: 1
+        enum: [0, 1, 2]
+    INQR_DVSN_2:
+      name: INQR_DVSN_2
+      required: true
+      in: query
+      description: 0=전체 1=매도 2=매수
+      schema:
+        type: string
+        maxLength: 1
+        enum: [0, 1, 2]
+    INQR_STRT_DT:
+      name: INQR_STRT_DT
+      required: true
+      in: query
+      description: 조회시작일자 YYYYMMDD
+      schema:
+        type: string
+        maxLength: 8
+    INQR_END_DT:
+      name: INQR_END_DT
+      required: true
+      in: query
+      description: 조회종료일자 YYYYMMDD
+      schema:
+        type: string
+        maxLength: 8
+    SLL_BUY_DVSN_CD:
+      name: SLL_BUY_DVSN_CD
+      required: true
+      in: query
+      description: 매도매수구분코드 00=전체 01=매도 02=매수
+      schema:
+        type: string
+        maxLength: 2
+        enum: ["00", "01", "02"]
+        example: ["00"]
+    ORDER_INQR_DVSN:
+      name: INQR_DVSN
+      required: true
+      in: query
+      description: 조회구분 00=역순 01=정순
+      schema:
+        type: string
+        maxLength: 2
+        enum: ["00", "01"]
+        example: ["00"]
+    ORD_GNO_BRNO:
+      name: ORD_GNO_BRNO
+      required: true
+      in: query
+      description: 주문채번지점번호 주문시 한국투자증권 시스템에서 지정된 영업점코드
+      schema:
+        type: string
+        maxLength: 5
+    ODNO:
+      name: ODNO
+      required: true
+      in: query
+      description: 주문번호 주문시 한국투자증권 시스템에서 채번된 주문번호
+      schema:
+        type: string
+        maxLength: 10
+    INQR_DVSN_3:
+      name: INQR_DVSN_3
+      required: true
+      in: query
+      description: 조회구분3 00=전체 01=현금 02=융자 03=대출 04=대주
+      schema:
+        type: string
+        maxLength: 2
+        enum: ["00", "01", "02", "03", "04"]
+        example: ["00"]
+    ORDER_INQR_DVSN_1:
+      name: INQR_DVSN_1
+      required: true
+      in: query
+      description: 조회구분1 공란=전체 1=ELW 2=프리보드
+      schema:
+        type: string
+        maxLength: 1
+        enum: ["", "1", "2"]
+        example: [""]
+    CCLD_DVSN:
+      name: CCLD_DVSN
+      required: true
+      in: query
+      description: 체결구분 00=전체 01=체결 02=미체결
+      schema:
+        type: string
+        maxLength: 2
+        enum: ["00", "01", "02"]
+        example: ["00"]
+
+    FID_PERIOD_DIV_CODE:
+      name: FID_PERIOD_DIV_CODE
+      required: true
+      in: query
+      description: FID 기간 분류 코드  D=(일)최근 30거래일 W=(주)최근 30주 M=(월)최근 30개월
+      schema:
+        type: string
+        maxLength: 32
+        enum: [D, W, M]
+        example: D
+    FID_ORG_ADJ_PRC:
+      name: FID_ORG_ADJ_PRC
+      required: true
+      in: query
+      description: FID 수정주가 원주가 가격 0=수정주가반영 1=수정주가미반영 수정주가는 액면분할/액면병합 등 권리 발생 시 과거 시세를 현재 주가에 맞게 보정한 가격
+      schema:
+        type: string
+        maxLength: 10
+        enum: ["0", "1"]
+        example: "1"
+    WCRC_FRCR_DVSN_CD:
+      name: WCRC_FRCR_DVSN_CD
+      required: true
+      in: query
+      description: 원화외화구분코드 01=원화 02=외화
+      schema:
+        type: string
+        maxLength: 2
+    NATN_CD:
+      name: NATN_CD
+      required: true
+      in: query
+      description: 국가코드 000=전체 840=미국 344=홍콩 156=중국 392=일본 704=베트남
+      schema:
+        type: string
+        maxLength: 3
+        example: "000"
+    TR_MKET_CD:
+      name: TR_MKET_CD
+      required: true
+      in: query
+      schema:
+        type: string
+        maxLength: 2
+      description: >
+        거래시장코드 
+          [Request body NATN_CD 000 설정] 
+          00 : 전체 
+          [Request body NATN_CD 840 설정] 
+          00 : 전체 
+          01 : 나스닥(NASD) 
+          02 : 뉴욕거래소(NYSE) 
+          03 : 미국(PINK SHEETS) 
+          04 : 미국(OTCBB) 
+          05 : 아멕스(AMEX) 
+          [Request body NATN_CD 156 설정] 
+          00 : 전체 
+          01 : 상해B 
+          02 : 심천B 
+          03 : 상해A 
+          04 : 심천A 
+          [Request body NATN_CD 392 설정] 
+          01 : 일본 
+          [Request body NATN_CD 704 설정] 
+          01 : 하노이거래 
+          02 : 호치민거래소 
+          [Request body NATN_CD 344 설정] 
+          01 : 홍콩 
+          02 : 홍콩CNY 
+          03 : 홍콩USD
+    INQR_DVSN_CD:
+      name: INQR_DVSN_CD
+      required: true
+      in: query
+      description: 조회구분코드 00=전체 01=일반해외주식 02=미니스탁
+      schema:
+        type: string
+        maxLength: 2
+        example: "00"
+    FID_COND_MRKT_DIV_CODE:
+      name: FID_COND_MRKT_DIV_CODE
+      required: true
+      in: query
+      description: FID 조건 시장 분류 코드 J=주식, ETF, ETN
+      schema:
+        type: string
+        maxLength: 2
+        example: J
+        enum: [J]
+    FID_INPUT_ISCD:
+      name: FID_INPUT_ISCD
+      required: true
+      in: query
+      description: 종목번호 (6자리)
+      schema:
+        type: string
+        maxLength: 12
+    GUBN:
+      name: GUBN
+      required: true
+      in: query
+      description: 일/주/월구분 0=일 1=주 2=월
+      schema:
+        type: string
+        maxLength: 1
+        enum: [0, 1, 2]
+        example: 0
+    BYMD:
+      name: BYMD
+      required: true
+      in: query
+      description: 조회기준일자(YYYYMMDD) 공란 설정 시, 기준일 오늘 날짜로 설정
+      schema:
+        type: string
+        maxLength: 8
+    MODP:
+      name: MODP
+      required: true
+      in: query
+      description: 수정주가반영여부 0=미반영 1=반영
+      schema:
+        type: string
+        maxLength: 1
+        enum: [0, 1]
+        example: 1
+    AUTH:
+      name: AUTH
+      required: true
+      in: query
+      description: 사용자권한정보 "" (Null 값 설정)
+      schema:
+        type: string
+        maxLength: 32
+        example: ""
+        default: ""
+        enum: [""]
+    EXCD:
+      name: EXCD
+      required: true
+      in: query
+      description: >
+        거래소코드
+          * `HKS` 홍콩 
+          * `NYS` 뉴욕 
+          * `NAS` 나스닥 
+          * `AMS` 아멕스 
+          * `TSE` 도쿄 
+          * `SHS` 상해 
+          * `SZS` 심천 
+          * `SHI` 상해지수 
+          * `SZI` 심천지수 
+          * `HSX` 호치민 
+          * `HNX` 하노이
+      schema:
+        type: string
+        maxLength: 4
+        enum: [HKS, NYS, NAS, AMS, TSE, SHS, SZS, SHI, SZI, HSX, HNX]
+        example: NYS
+    SYMB:
+      name: SYMB
+      required: true
+      description: 종목코드
+      in: query
+      schema:
+        type: string
+        maxLength: 16
+    OVRS_EXCG_CD:
+      name: OVRS_EXCG_CD
+      required: true
+      in: query
+      description: >
+        해외거래소코드
+          * `NASD` 미국전체 
+          * `NAS` 나스닥 
+          * `NYSE` 뉴욕 
+          * `AMEX` 아멕스 
+          * `SEHK` 홍콩 
+          * `SHAA` 중국상해 
+          * `SZAA` 중국심천 
+          * `TKSE` 일본 
+          * `HASE` 베트남 하노이 
+          * `VNSE` 베트남 호치민
+      schema:
+        type: string
+        maxLength: 4
+        enum: [NASD, NAS, NYSE, AMEX, SEHK, SHAA, SZAA, TKSE, HASE, VNSE]
+        example: [NASD]
+    TR_CRCY_CD:
+      name: TR_CRCY_CD
+      required: true
+      in: query
+      description: >
+        거래통화코드
+          * `USD` 미국달러 
+          * `HKD` 홍콩달러 
+          * `CNY` 중국위안화 
+          * `JPY` 일본엔화 
+          * `VND` 베트남동
+      schema:
+        type: string
+        maxLength: 3
+        enum: [USD, HKD, CNY, JPY, VND]
+        example: USD
+    CTX_AREA_FK200:
+      name: CTX_AREA_FK200
+      required: true
+      in: query
+      description: 연속조회검색조건200 공란=최초 조회시 이전 조회 Output CTX_AREA_FK200값=다음페이지 조회시(2번째부터)
+      schema:
+        type: string
+        maxLength: 200
+        example: ""
+        default: ""
+    CTX_AREA_NK200:
+      name: CTX_AREA_NK200
+      required: true
+      in: query
+      description: 연속조회검색조건200 공란=최초 조회시 이전 조회 Output CTX_AREA_NK200값=다음페이지 조회시(2번째부터)
+      schema:
+        type: string
+        maxLength: 200
+        example: ""
+        default: ""
+
+    PDNO:
+      name: PDNO
+      required: true
+      in: query
+      description: 상품번호 종목번호(6자리)
+      schema:
+        type: string
+        maxLength: 12
+    ORD_UNPR:
+      in: query
+      name: ORD_UNPR
+      description: 주문단가 1주당 가격
+      schema:
+        type: string
+        maxLength: 19
+      required: true
+    ORD_DVSN:
+      name: ORD_DVSN
+      in: query
+      description: >
+        주문구분 
+          * `00` 지정가 
+          * `01` 시장가 
+          * `02` 조건부지정가 
+          * `03` 최유리지정가 
+          * `04` 최우선지정가 
+          * `05` 장전 시간외 
+          * `06` 장후 시간외 
+          * `07` 시간외 단일가 
+          * `08` 자기주식 
+          * `09` 자기주식S-Option 
+          * `10` 자기주식금전신탁 
+          * `11` IOC지정가 (즉시체결,잔량취소) 
+          * `12` FOK지정가 (즉시체결,전량취소) 
+          * `13` IOC시장가 (즉시체결,잔량취소) 
+          * `14` FOK시장가 (즉시체결,전량취소) 
+          * `15` IOC최유리 (즉시체결,잔량취소) 
+          * `16` FOK최유리 (즉시체결,전량취소)
+          * `51` 장중대량 
+          * `52` 장중바스켓 
+          * `62` 장개시전 시간외대량 
+          * `63` 장개시전 시간외바스켓 
+          * `67` 장개시전 금전신탁자사주 
+          * `69` 장개시전 자기주식 
+          * `72` 시간외대량 
+          * `77` 시간외자사주신탁 
+          * `79` 시간외대량자기주식 
+          * `80` 바스켓
+      schema:
+        type: string
+        maxLength: 2
+        example: "00"
+        enum:
+          [
+            "00",
+            "01",
+            "02",
+            "03",
+            "04",
+            "05",
+            "06",
+            "07",
+            "08",
+            "09",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "51",
+            "52",
+            "62",
+            "63",
+            "67",
+            "69",
+            "72",
+            "77",
+            "79",
+            "80",
+          ]
+      required: true
+    CMA_EVLU_AMT_ICLD_YN:
+      name: CMA_EVLU_AMT_ICLD_YN
+      in: query
+      description: >
+        CMA평가금액포함여부:
+          * `Y` 포함 
+          * `N` 포함하지 않음
+      schema:
+        type: string
+        maxLength: 1
+        default: Y
+        enum: [Y, N]
+        example: Y
+
+      required: true
+    OVRS_ICLD_YN:
+      name: OVRS_ICLD_YN
+      in: query
+      description: >
+        해외포함여부:
+          * `Y` 포함 
+          * `N` 포함하지 않음
+      schema:
+        type: string
+        maxLength: 1
+        enum: [Y, N]
+        default: Y
+        example: Y
+      required: true
+    CANO:
+      in: query
+      name: CANO
+      description: 종합계좌번호 계좌번호 체계(8-2)의 앞 8자리
+      schema:
+        type: string
+        maxLength: 8
+      required: true
+    ACNT_PRDT_CD:
+      in: query
+      name: ACNT_PRDT_CD
+      description: 계좌상품코드 계좌번호 체계(8-2)의 뒤 2자리
+      schema:
+        type: string
+        maxLength: 2
+        example: "01"
+      required: true
+    AFHR_FLPR_YN:
+      in: query
+      name: AFHR_FLPR_YN
+      description: >
+        시간외단일가여부:  
+          * `N` 기본값 
+          * `Y` 시간외단일가
+      schema:
+        type: string
+        maxLength: 2
+        enum: [Y, N]
+        default: N
+      required: true
+    OFL_YN:
+      in: query
+      name: OFL_YN
+      description: 오프라인여부 공란(Default)
+      schema:
+        type: string
+        maxLength: 1
+        default: ""
+      required: true
+    INQR_DVSN:
+      in: query
+      name: INQR_DVSN
+      description: >
+        조회구분 
+          * `01` 대출일별 
+          * `02` 종목별
+      schema:
+        type: string
+        maxLength: 2
+        enum: ["01", "02"]
+        default: "02"
+      required: true
+    UNPR_DVSN:
+      in: query
+      name: UNPR_DVSN
+      description: >
+        단가구분: 
+        * `01` 기본값
+      schema:
+        type: string
+        maxLength: 2
+        default: "01"
+      required: true
+    FUND_STTL_ICLD_YN:
+      in: query
+      name: FUND_STTL_ICLD_YN
+      description: >
+        펀드결제분포함여부 
+          * `N` 포함하지 않음 
+          * `Y` 포함
+      schema:
+        type: string
+        maxLength: 1
+        enum: [Y, N]
+        example: Y
+        default: Y
+      required: true
+    FNCG_AMT_AUTO_RDPT_YN:
+      in: query
+      name: FNCG_AMT_AUTO_RDPT_YN
+      description: >
+        융자금액자동상환여부:
+          * `N` 기본값
+      schema:
+        type: string
+        maxLength: 1
+        enum: [N]
+        default: N
+      required: true
+    PRCS_DVSN:
+      in: query
+      name: PRCS_DVSN
+      description: >
+        처리구분: 
+          * `00` 전일매매포함 
+          * `01` 전일매매미포함
+      schema:
+        type: string
+        maxLength: 2
+        enum: ["00", "01"]
+        default: "01"
+        example: "01"
+      required: true
+    CTX_AREA_FK100:
+      in: query
+      name: CTX_AREA_FK100
+      description: 연속조회검색조건100 공란=최초 조회시 이전 조회 Output CTX_AREA_FK100 값=다음페이지 조회시(2번째부터)
+      schema:
+        type: string
+        maxLength: 100
+        default: ""
+      required: true
+    CTX_AREA_NK100:
+      in: query
+      name: CTX_AREA_NK100
+      description: 연속조회검색조건100 공란=최초 조회시 이전 조회 Output CTX_AREA_NK100 값=다음페이지 조회시(2번째부터)
+      schema:
+        type: string
+        maxLength: 100
+        default: ""
+      required: true
+    appkey:
+      in: header
+      name: appkey
+      description: 앱키 - 한국투자증권 홈페이지에서 발급받은 appkey (절대 노출되지 않도록 주의해주세요.)
+      schema:
+        type: string
+        maxLength: 36
+      required: true
+      example: PSw2UvBQCpoZFc7nZpIfIrOttmXXXXXXXXXX
+    appsecret:
+      in: header
+      name: appsecret
+      description: 앱시크릿키 - 한국투자증권 홈페이지에서 발급받은 appsecret (절대 노출되지 않도록 주의해주세요.)
+      schema:
+        type: string
+        maxLength: 180
+        example: /g84gaZp7W3DJEZhamiTH8ZdJkUJ8603rjo3HcOm5PvIc1YC3YmyJOQoW1H0kNjo4IbHwGUdi3+9oEbH4RKKl8GnEu3n/khxm0OrwHkQur+wbA74fcFXxaUnEbftu0X72Eaw9dEBMuK3rODeeOanrsJ1kZ9oKWykIG04F0nmgdXXXXXXXXXX
+      required: true
+
+    hashkey:
+      name: hashkey
+      required: true
+      in: header
+      schema:
+        type: string
+        maxLength: 256
+      description: 해쉬키 - POST API 대상 Client가 요청하는 Request Body를 hashkey api로 생성한 Hash값
+    personalseckey:
+      in: header
+      name: personalseckey
+      description: 고객식별키 - 법인 필수 제휴사 회원 관리를 위한 고객식별키
+      schema:
+        type: string
+        maxLength: 180
+      required: false
+    gt_uid:
+      name: gt_uid
+      in: header
+      required: false
+      description: Global UID - 법인 필수 거래고유번호로 사용하므로 거래별로 UNIQUE해야 함
+      schema:
+        type: string
+        maxLength: 32
+    ip_addr:
+      name: ip_addr
+      in: header
+      required: false
+      description: 접속 단말 공인 IP - 법인 필수 사용자(회원)의 IP Address
+      schema:
+        type: string
+        maxLength: 12
+    phone_number:
+      name: phone_number
+      in: header
+      required: false
+      description: 핸드폰번호 - 법인 필수 제휴사APP을 사용하는 경우 사용자(회원) 핸드폰번호 ex) 01011112222 (하이픈 등 구분값 제거)
+      schema:
+        type: string
+        maxLength: 12
+        example: 01011112222
+    mac_address:
+      name: mac_address
+      in: header
+      required: false
+      description: 맥주소 - 법인고객 혹은 개인고객의 Mac address 값
+      schema:
+        type: string
+        maxLength: 12
+    seq_no:
+      name: seq_no
+      in: header
+      required: false
+      description: 일련번호 - 법인 필수 01
+      schema:
+        type: string
+        maxLength: 2
+        enum:
+          - 01
+    custtype:
+      name: custtype
+      in: header
+      required: false
+      description: >
+        고객타입:
+          * `B` 법인 
+          * `P` 개인
+      schema:
+        type: string
+        maxLength: 1
+        enum: [P, B]
+        example: P
+        default: P
+    tr_cont:
+      name: tr_cont
+      in: header
+      required: false
+      description: 연속 거래 여부 - 공백=초기 조회 N=다음 데이터 조회 (output header의 tr_cont가 M일 경우)
+      schema:
+        type: string
+        maxLength: 1
+        enum: ["", N]
+        default: ""
+    tr_id:
+      name: tr_id
+      in: header
+      required: true
+      schema:
+        type: string
+        maxLength: 13
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      # bearerFormat: JWT
+      description: OAuth 토큰이 필요한 API 경우 발급한 Access token 일반고객(Access token 유효기간 1일, OAuth 2.0의 Client Credentials Grant 절차를 준용) 법인(Access token 유효기간 3개월, Refresh token 유효기간 1년, OAuth 2.0의 Authorization Code Grant 절차를 준용)
+  responses:
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: NotFound
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    MethodNotAllowed:
+      description: Method Not Allowed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BasicResponse"
+
+    ServiceUnavailable:
+      description: Service Unavailable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Error:
+      type: object
+      properties:
+        error_description:
+          type: string
+        error_code:
+          type: string
+      required:
+        - error_description
+        - error_code
+    CreateTokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: OAuth 토큰이 필요한 API 경우 발급한 Access token 일반고객(Access token 유효기간 1일, OAuth 2.0의 Client Credentials Grant 절차를 준용) 법인(Access token 유효기간 3개월, Refresh token 유효기간 1년, OAuth 2.0의 Authorization Code Grant 절차를 준용)
+          example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0b2tlbiIsImF1ZCI6ImMwNzM1NTYzLTA1MjctNDNhZS05ODRiLTJiNWI1ZWZmOWYyMyIsImlzcyI6InVub2d3IiwiZXhwIjoxNjQ5NzUxMTAwLCJpYXQiOjE2NDE5NzUxMDAsImp0aSI6IkJTZlM0QUtSSnpRVGpmdHRtdXZlenVQUTlKajc3cHZGdjBZVyJ9.Oyt_C639yUjWmRhymlszgt6jDo8fvIKkkxH1mMngunV1T15SCC4I3Xe6MXxcY23DXunzBfR1uI0KXXXXXXXXXX
+          maxLength: 286
+        token_type:
+          type: string
+          description: 접근토큰유형 "Bearer"
+          maxLength: 20
+          enum:
+            - Bearer
+        expires_in:
+          type: integer
+          description: 유효기간(초)
+          example: 86400
+          maxLength: 10
+      required:
+        - access_token
+        - token_type
+        - expires_in
+    DeleteTokenRequest:
+      type: object
+      properties:
+        appkey:
+          type: string
+          maxLength: 36
+        appsecret:
+          type: string
+          maxLength: 180
+        token:
+          type: string
+          maxLength: 286
+      required:
+        - appkey
+        - appsecret
+        - token
+      example:
+        appkey: PSw2UvBQCpoZFc7nZpIfIrOttmXXXXXXXXXX
+        appsecret: /g84gaZp7W3DJEZhamiTH8ZdJkUJ8603rjo3HcOm5PvIc1YC3YmyJOQoW1H0kNjo4IbHwGUdi3+9oEbH4RKKl8GnEu3n/khxm0OrwHkQur+wbA74fcFXxaUnEbftu0X72Eaw9dEBMuK3rODeeOanrsJ1kZ9oKWykIG04F0nmgdXXXXXXXXXX
+        token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0b2tlbiIsImF1ZCI6IjZmNDgxMjBiLTlmMDItNGI5ZS05MGExLTRiNDk2MGM5ZWY2MyIsImlzcyI6InVub2d3IiwiZXhwIjoxNjQzMjg2MDUzLCJpYXQiOjE2NDMxOTk2NTMsImp0aSI6IlBTdzJVdkJRQ3dvWkZhOG5acElmSXJPdHRtZUtLUGZCclNKcyJ9.6Z-UvArobBfXbnpSFbFhd9WPVEM3ZQa5NEpqfmQ6rrZBISCi-P9CEamfVReIduTVYbafF02Pl6EPXXXXXXXXXX
+    DeleteTokenResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: HTTP 응답코드
+          maxLength: 8
+          example: 200
+        message:
+          type: string
+          description: 응답메세지
+          maxLength: 450
+          example: 접근토큰 폐기에 성공하였습니다
+      required:
+        - code
+        - message
+    BasicResponse:
+      type: object
+      properties:
+        rt_cd:
+          type: string
+          maxLength: 1
+          description: 성공 실패 여부 0=성공 0 이외의 값=실패
+        msg_cd:
+          type: string
+          maxLength: 8
+          description: 응답코드
+        msg1:
+          type: string
+          maxLength: 80
+          description: 응답메세지
+      required:
+        - rt_cd
+        - msg_cd
+        - msg1
+    GetDomesticStockPriceListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            output:
+              type: array
+              items:
+                type: object
+                properties:
+                  stck_bsop_date:
+                    type: string
+                    description: 주식 영업 일자
+                    maxLength: 8
+                  stck_oprc:
+                    type: string
+                    description: 주식 시가
+                    maxLength: 10
+                  stck_hgpr:
+                    type: string
+                    description: 주식 최고가
+                    maxLength: 10
+                  stck_lwpr:
+                    type: string
+                    description: 주식 최저가
+                    maxLength: 10
+                  stck_clpr:
+                    type: string
+                    description: 주식 종가
+                    maxLength: 10
+                  acml_vol:
+                    type: string
+                    description: 누적 거래량
+                    maxLength: 18
+                  prdy_vrss_vol_rate:
+                    type: string
+                    description: 전일 대비 거래량 비율
+                    maxLength: 12
+                  prdy_vrss:
+                    type: string
+                    description: 전일 대비
+                    maxLength: 10
+                  prdy_vrss_sign:
+                    type: string
+                    description: 전일 대비 부호
+                    maxLength: 1
+                  prdy_ctrt:
+                    type: string
+                    description: 전일 대비율
+                    maxLength: 10
+                  hts_frgn_ehrt:
+                    type: string
+                    description: HTS 외국인 소진율
+                    maxLength: 10
+                  frgn_ntby_qty:
+                    type: string
+                    description: 외국인 순매수 수량
+                    maxLength: 12
+                  flng_cls_code:
+                    type: string
+                    description: 락 구분 코드 01=권리락  02=배당락  03=분배락  04=권배락  05=중간(분기)배당락  06=권리중간배당락  07=권리분기배당락
+                    maxLength: 2
+                  acml_prtt_rate:
+                    type: string
+                    description: 누적 분할 비율
+                    maxLength: 12
+                required:
+                  - stck_bsop_date
+                  - stck_oprc
+                  - stck_hgpr
+                  - stck_lwpr
+                  - stck_clpr
+                  - acml_vol
+                  - prdy_vrss_vol_rate
+                  - prdy_vrss
+                  - prdy_vrss_sign
+                  - prdy_ctrt
+                  - hts_frgn_ehrt
+                  - frgn_ntby_qty
+                  - flng_cls_code
+                  - acml_prtt_rate
+
+    GetDomesticStockPriceResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            output:
+              type: object
+              properties:
+                iscd_stat_cls_code:
+                  type: string
+                  description: 종목 상태 구분 코드 00=그외 51=관리종목 52=투자의견 53=투자경고 54=투자주의 55=신용가능 57=증거금 100% 58=거래정지 59=단기과열
+                  maxLength: 3
+                marg_rate:
+                  type: string
+                  description: 증거금 비율
+                  maxLength: 12
+                rprs_mrkt_kor_name:
+                  type: string
+                  description: 대표 시장 한글 명
+                  maxLength: 40
+                bstp_kor_isnm:
+                  type: string
+                  description: 업종 한글 종목명
+                  maxLength: 40
+                temp_stop_yn:
+                  type: string
+                  description: 임시 정지 여부
+                  maxLength: 1
+                oprc_rang_cont_yn:
+                  type: string
+                  description: 시가 범위 연장 여부
+                  maxLength: 1
+                clpr_rang_cont_yn:
+                  type: string
+                  description: 종가 범위 연장 여부
+                  maxLength: 1
+                crdt_able_yn:
+                  type: string
+                  description: 신용 가능 여부
+                  maxLength: 1
+                grmn_rate_cls_code:
+                  type: string
+                  description: 보증금 비율 구분 코드 한국투자 증거금비율 (marg_rate 참고) 40=20%, 30%, 40% 50=50% 60=60%
+                  maxLength: 3
+                elw_pblc_yn:
+                  type: string
+                  description: ELW 발행 여부
+                  maxLength: 1
+                stck_prpr:
+                  type: string
+                  description: 주식 현재가
+                  maxLength: 10
+                prdy_vrss:
+                  type: string
+                  description: 전일 대비
+                  maxLength: 10
+                prdy_vrss_sign:
+                  type: string
+                  description: 전일 대비 부호 1=상한  2=상승  3=보합  4=하한  5=하락
+                  maxLength: 1
+                prdy_ctrt:
+                  type: string
+                  description: 전일 대비율
+                  maxLength: 10
+                acml_tr_pbmn:
+                  type: string
+                  description: 누적 거래 대금
+                  maxLength: 18
+                acml_vol:
+                  type: string
+                  description: 누적 거래량
+                  maxLength: 18
+                prdy_vrss_vol_rate:
+                  type: string
+                  description: 전일 대비 거래량 비율
+                  maxLength: 12
+                stck_oprc:
+                  type: string
+                  description: 주식 시가
+                  maxLength: 10
+                stck_hgpr:
+                  type: string
+                  description: 주식 최고가
+                  maxLength: 10
+                stck_lwpr:
+                  type: string
+                  maxLength: 10
+                  description: 주식 최저가
+                stck_mxpr:
+                  type: string
+                  maxLength: 10
+                  description: 주식 상한가
+                stck_llam:
+                  type: string
+                  maxLength: 10
+                  description: 주식 하한가
+                stck_sdpr:
+                  type: string
+                  maxLength: 10
+                  description: 주식 기준가
+                wghn_avrg_stck_prc:
+                  type: string
+                  maxLength: 21
+                  description: 가중 평균 주식 가격
+                hts_frgn_ehrt:
+                  type: string
+                  maxLength: 82
+                  description: HTS 외국인 소진율
+                frgn_ntby_qty:
+                  type: string
+                  maxLength: 12
+                  description: 외국인 순매수 수량
+                pgtr_ntby_qty:
+                  type: string
+                  maxLength: 18
+                  description: 프로그램매매 순매수 수량
+                pvt_scnd_dmrs_prc:
+                  type: string
+                  maxLength: 10
+                  description: 피벗 2차 디저항 가격
+                pvt_frst_dmrs_prc:
+                  type: string
+                  maxLength: 10
+                  description: 피벗 1차 디저항 가격
+                pvt_pont_val:
+                  type: string
+                  maxLength: 10
+                  description: 피벗 포인트 값
+                pvt_frst_dmsp_prc:
+                  type: string
+                  maxLength: 10
+                  description: 피벗 1차 디지지 가격
+                pvt_scnd_dmsp_prc:
+                  type: string
+                  maxLength: 10
+                  description: 피벗 2차 디지지 가격
+                dmrs_val:
+                  type: string
+                  maxLength: 10
+                  description: 디저항 값
+                dmsp_val:
+                  type: string
+                  maxLength: 10
+                  description: 디지지 값
+                cpfn:
+                  type: string
+                  maxLength: 22
+                  description: 자본금
+                rstc_wdth_prc:
+                  type: string
+                  maxLength: 10
+                  description: 제한 폭 가격
+                stck_fcam:
+                  type: string
+                  maxLength: 11
+                  description: 주식 액면가
+                stck_sspr:
+                  type: string
+                  maxLength: 10
+                  description: 주식 대용가
+                aspr_unit:
+                  type: string
+                  maxLength: 10
+                  description: 호가단위
+                hts_deal_qty_unit_val:
+                  type: string
+                  maxLength: 10
+                  description: HTS 매매 수량 단위 값
+                lstn_stcn:
+                  type: string
+                  maxLength: 18
+                  description: 상장 주수
+                hts_avls:
+                  type: string
+                  maxLength: 18
+                  description: HTS 시가총액
+                per:
+                  type: string
+                  maxLength: 10
+                  description: PER
+                pbr:
+                  type: string
+                  maxLength: 10
+                  description: PBR
+                stac_month:
+                  type: string
+                  maxLength: 2
+                  description: 결산 월
+                vol_tnrt:
+                  type: string
+                  maxLength: 10
+                  description: 거래량 회전율
+                eps:
+                  type: string
+                  maxLength: 13
+                  description: EPS
+                bps:
+                  type: string
+                  maxLength: 13
+                  description: BPS
+                d250_hgpr:
+                  type: string
+                  maxLength: 10
+                  description: 250일 최고가
+                d250_hgpr_date:
+                  type: string
+                  maxLength: 8
+                  description: 250일 최고가 일자
+                d250_hgpr_vrss_prpr_rate:
+                  type: string
+                  maxLength: 12
+                  description: 250일 최고가 대비 현재가 비율
+                d250_lwpr:
+                  type: string
+                  maxLength: 10
+                  description: 250일 최저가
+                d250_lwpr_date:
+                  type: string
+                  maxLength: 8
+                  description: 250일 최저가 일자
+                d250_lwpr_vrss_prpr_rate:
+                  type: string
+                  maxLength: 12
+                  description: 250일 최저가 대비 현재가 비율
+                stck_dryy_hgpr:
+                  type: string
+                  maxLength: 10
+                  description: 주식 연중 최고가
+                dryy_hgpr_vrss_prpr_rate:
+                  type: string
+                  maxLength: 12
+                  description: 연중 최고가 대비 현재가 비율
+                dryy_hgpr_date:
+                  type: string
+                  maxLength: 8
+                  description: 연중 최고가 일자
+                stck_dryy_lwpr:
+                  type: string
+                  maxLength: 10
+                  description: 주식 연중 최저가
+                dryy_lwpr_vrss_prpr_rate:
+                  type: string
+                  maxLength: 12
+                  description: 연중 최저가 대비 현재가 비율
+                dryy_lwpr_date:
+                  type: string
+                  maxLength: 8
+                  description: 연중 최저가 일자
+                w52_hgpr:
+                  type: string
+                  maxLength: 10
+                  description: 52주일 최고가
+                w52_hgpr_vrss_prpr_ctrt:
+                  type: string
+                  maxLength: 10
+                  description: 52주일 최고가 대비 현재가 대비
+                w52_hgpr_date:
+                  type: string
+                  maxLength: 8
+                  description: 52주일 최고가 일자
+                w52_lwpr:
+                  type: string
+                  maxLength: 10
+                  description: 52주일 최저가
+                w52_lwpr_vrss_prpr_ctrt:
+                  type: string
+                  maxLength: 10
+                  description: 52주일 최저가 대비 현재가 대비
+                w52_lwpr_date:
+                  type: string
+                  maxLength: 8
+                  description: 52주일 최저가 일자
+                whol_loan_rmnd_rate:
+                  type: string
+                  maxLength: 12
+                  description: 전체 융자 잔고 비율
+                ssts_yn:
+                  type: string
+                  maxLength: 1
+                  description: 공매도가능여부
+                stck_shrn_iscd:
+                  type: string
+                  maxLength: 9
+                  description: 주식 단축 종목코드
+                fcam_cnnm:
+                  type: string
+                  maxLength: 20
+                  description: 액면가 통화명
+                cpfn_cnnm:
+                  type: string
+                  maxLength: 20
+                  description: 자본금 통화명 외국주권은 억으로 떨어지며, 그 외에는 만으로 표시됨
+                frgn_hldn_qty:
+                  type: string
+                  maxLength: 18
+                  description: 외국인 보유 수량
+                vi_cls_code:
+                  type: string
+                  maxLength: 1
+                  description: VI적용구분코드
+                ovtm_vi_cls_code:
+                  type: string
+                  maxLength: 1
+                  description: 시간외단일가VI적용구분코드
+                last_ssts_cntg_qty:
+                  type: string
+                  maxLength: 12
+                  description: 최종 공매도 체결 수량
+                invt_caful_yn:
+                  type: string
+                  maxLength: 1
+                  description: 투자유의여부
+                mrkt_warn_cls_code:
+                  type: string
+                  maxLength: 2
+                  description: 시장경고코드 00=없음 01=투자주의 02=투자경고 03=투자위험
+                short_over_yn:
+                  type: string
+                  maxLength: 1
+                  description: 단기과열여부
+                sltr_yn:
+                  type: string
+                  maxLength: 1
+                  description: UNKNOWN
+              required:
+                - iscd_stat_cls_code
+                - marg_rate
+                - rprs_mrkt_kor_name
+                - bstp_kor_isnm
+                - temp_stop_yn
+                - oprc_rang_cont_yn
+                - clpr_rang_cont_yn
+                - crdt_able_yn
+                - grmn_rate_cls_code
+                - elw_pblc_yn
+                - stck_prpr
+                - prdy_vrss
+                - prdy_vrss_sign
+                - prdy_ctrt
+                - acml_tr_pbmn
+                - acml_vol
+                - prdy_vrss_vol_rate
+                - stck_oprc
+                - stck_hgpr
+                - stck_lwpr
+                - stck_mxpr
+                - stck_llam
+                - stck_sdpr
+                - wghn_avrg_stck_prc
+                - hts_frgn_ehrt
+                - frgn_ntby_qty
+                - pgtr_ntby_qty
+                - pvt_scnd_dmrs_prc
+                - pvt_frst_dmrs_prc
+                - pvt_pont_val
+                - pvt_frst_dmsp_prc
+                - pvt_scnd_dmsp_prc
+                - dmrs_val
+                - dmsp_val
+                - cpfn
+                - rstc_wdth_prc
+                - stck_fcam
+                - stck_sspr
+                - aspr_unit
+                - hts_deal_qty_unit_val
+                - lstn_stcn
+                - hts_avls
+                - per
+                - pbr
+                - stac_month
+                - vol_tnrt
+                - eps
+                - bps
+                - d250_hgpr
+                - d250_hgpr_date
+                - d250_hgpr_vrss_prpr_rate
+                - d250_lwpr
+                - d250_lwpr_date
+                - d250_lwpr_vrss_prpr_rate
+                - stck_dryy_hgpr
+                - dryy_hgpr_vrss_prpr_rate
+                - dryy_hgpr_date
+                - stck_dryy_lwpr
+                - dryy_lwpr_vrss_prpr_rate
+                - dryy_lwpr_date
+                - w52_hgpr
+                - w52_hgpr_vrss_prpr_ctrt
+                - w52_hgpr_date
+                - w52_lwpr
+                - w52_lwpr_vrss_prpr_ctrt
+                - w52_lwpr_date
+                - whol_loan_rmnd_rate
+                - ssts_yn
+                - stck_shrn_iscd
+                - fcam_cnnm
+                - cpfn_cnnm
+                - frgn_hldn_qty
+                - vi_cls_code
+                - ovtm_vi_cls_code
+                - last_ssts_cntg_qty
+                - invt_caful_yn
+                - mrkt_warn_cls_code
+                - short_over_yn
+                - sltr_yn
+
+    GetOverseasStockPriceListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            output1:
+              type: object
+              properties:
+                rsym:
+                  type: string
+                  description: 실시간조회종목코드
+                  maxLength: 16
+                zdiv:
+                  type: string
+                  description: 소수점자리수
+                  maxLength: 1
+                nrec:
+                  type: string
+                  description: 전일종가
+                  maxLength: 12
+              required:
+                - rsym
+                - zdiv
+                - nrec
+            output2:
+              type: array
+              items:
+                type: object
+                properties:
+                  xymd:
+                    type: string
+                    description: 일자(YYYYMMDD)
+                    maxLength: 8
+                  clos:
+                    type: string
+                    description: 해당 일자의 종가
+                    maxLength: 12
+                  sign:
+                    type: string
+                    description: 대비기호 1=상한 2=상승 3=보합 4=하한 5=하락
+                    maxLength: 1
+                  diff:
+                    type: string
+                    description: 해당 일자의 종가와 해당 전일 종가의 차이 (해당일 종가-해당 전일 종가)
+                    maxLength: 12
+                  rate:
+                    type: string
+                    description: 해당 전일 대비 / 해당일 종가 * 100
+                    maxLength: 12
+                  open:
+                    type: string
+                    description: 해당일 최초 거래가격
+                    maxLength: 12
+                  high:
+                    type: string
+                    description: 해당일 가장 높은 거래가격
+                    maxLength: 12
+                  low:
+                    type: string
+                    description: 해당일 가장 낮은 거래가격
+                    maxLength: 12
+                  tvol:
+                    type: string
+                    description: 해당일 거래량
+                    maxLength: 14
+                  tamt:
+                    type: string
+                    description: 해당일 거래대금
+                    maxLength: 14
+                  pbid:
+                    type: string
+                    description: 매수호가
+                    maxLength: 12
+                  vbid:
+                    type: string
+                    description: 매수호가잔량
+                    maxLength: 10
+                  pask:
+                    type: string
+                    description: 매도호가
+                    maxLength: 12
+                  vask:
+                    type: string
+                    description: 매도호가잔량
+                    maxLength: 10
+                required:
+                  - xymd
+                  - clos
+                  - sign
+                  - diff
+                  - rate
+                  - open
+                  - high
+                  - low
+                  - tvol
+                  - tamt
+                  - pbid
+                  - vbid
+                  - pask
+                  - vask
+    GetOverseasBalanceResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            output1:
+              type: array
+              items:
+                type: object
+                properties:
+                  prdt_name:
+                    type: string
+                    description: 상품명 String Y 60 종목명
+                  cblc_qty13:
+                    type: string
+                    description: 잔고수량13 String Y 32 잔고수량
+                  thdt_buy_ccld_qty1:
+                    type: string
+                    description: 당일매수체결수량1 String Y 32 당일 매수 체결 완료 수량
+                  thdt_sll_ccld_qty1:
+                    type: string
+                    description: 당일매도체결수량1 String Y 32 당일 매도 체결 완료 수량
+                  ccld_qty_smtl1:
+                    type: string
+                    description: 체결수량합계1 String Y 32 체결기준 현재 잔고수량
+                  ord_psbl_qty1:
+                    type: string
+                    description: 주문가능수량1 String Y 32 주문 가능한 주문 수량
+                  frcr_pchs_amt:
+                    type: string
+                    description: 외화매입금액 String Y 29 해당 종목의 외화 기준 매입금액
+                  frcr_evlu_amt2:
+                    type: string
+                    description: 외화평가금액2 String Y 30 해당 종목의 외화 기준 평가금액
+                  evlu_pfls_amt2:
+                    type: string
+                    description: 평가손익금액2 String Y 31 해당 종목의 매입금액과 평가금액의 외회기준 비교 손익
+                  evlu_pfls_rt1:
+                    type: string
+                    description: 평가손익율1 String Y 32 해당 종목의 평가손익을 기준으로 한 수익률
+                  pdno:
+                    type: string
+                    description: 상품번호 String Y 12 종목코드
+                  bass_exrt:
+                    type: string
+                    description: 기준환율 String Y 31 원화 평가 시 적용 환율
+                  buy_crcy_cd:
+                    type: string
+                    description: 매수통화코드 String Y 3 USD=미국달러 HKD=홍콩달러 CNY=중국위안화 JPY=일본엔화 VND=베트남동
+                  ovrs_now_pric1:
+                    type: string
+                    description: 해외현재가격1 String Y 29 해당 종목의 현재가
+                  avg_unpr3:
+                    type: string
+                    description: 평균단가3 String Y 29 해당 종목의 매수 평균 단가
+                  tr_mket_name:
+                    type: string
+                    description: 거래시장명 String Y 60 해당 종목의 거래시장명
+                  natn_kor_name:
+                    type: string
+                    description: 국가한글명 String Y 60 거래 국가명
+                  pchs_rmnd_wcrc_amt:
+                    type: string
+                    description: 매입잔액원화금액 String Y 19
+                  thdt_buy_ccld_frcr_amt:
+                    type: string
+                    description: 당일매수체결외화금액 Object Y 30 당일 매수 외화금액
+                  thdt_sll_ccld_frcr_amt:
+                    type: string
+                    description: 당일매도체결외화금액 String Y 30 당일 매도 외화금액
+                  unit_amt:
+                    type: string
+                    description: 단위금액 String Y 19
+                  std_pdno:
+                    type: string
+                    description: 표준상품번호 String Y 12
+                  prdt_type_cd:
+                    type: string
+                    description: 상품유형코드 String Y 3
+                  scts_dvsn_name:
+                    type: string
+                    description: 유가증권구분명 String Y 60
+                  loan_rmnd:
+                    type: string
+                    description: 대출잔액 String Y 19 대출 미상환 금액
+                  loan_dt:
+                    type: string
+                    description: 대출일자 String Y 8 대출 실행일자
+                  loan_expd_dt:
+                    type: string
+                    description: 대출만기일자 String Y 8 대출 만기일자
+                  ovrs_excg_cd:
+                    type: string
+                    description: 해외거래소코드 String Y 4 NASD=나스닥 NYSE=뉴욕 AMEX=아멕스 SEHK=홍콩 SHAA=중국상해 SZAA=중국심천 TKSE=일본 HASE=하노이거래소 VNSE=호치민거래소
+                  item_lnkg_excg_cd:
+                    type: string
+                    description: 종목연동거래소코드 String Y 4
+                required:
+                  - prdt_name
+                  - cblc_qty13
+                  - thdt_buy_ccld_qty1
+                  - thdt_sll_ccld_qty1
+                  - ccld_qty_smtl1
+                  - ord_psbl_qty1
+                  - frcr_pchs_amt
+                  - frcr_evlu_amt2
+                  - evlu_pfls_amt2
+                  - evlu_pfls_rt1
+                  - pdno
+                  - bass_exrt
+                  - buy_crcy_cd
+                  - ovrs_now_pric1
+                  - avg_unpr3
+                  - tr_mket_name
+                  - natn_kor_name
+                  - pchs_rmnd_wcrc_amt
+                  - thdt_buy_ccld_frcr_amt
+                  - thdt_sll_ccld_frcr_amt
+                  - unit_amt
+                  - std_pdno
+                  - prdt_type_cd
+                  - scts_dvsn_name
+                  - loan_rmnd
+                  - loan_dt
+                  - loan_expd_dt
+                  - ovrs_excg_cd
+                  - item_lnkg_excg_cd
+            output2:
+              type: array
+              items:
+                type: object
+                properties:
+                  crcy_cd:
+                    type: string
+                    description: 통화코드 String Y 3
+                  crcy_cd_name:
+                    type: string
+                    description: 통화코드명 String Y 60
+                  frcr_buy_amt_smtl:
+                    type: string
+                    description: 외화매수금액합계 String Y 29 해당 통화로 매수한 종목 전체의 매수금액
+                  frcr_sll_amt_smtl:
+                    type: string
+                    description: 외화매도금액합계 String Y 29 해당 통화로 매도한 종목 전체의 매수금액
+                  frcr_dncl_amt_2:
+                    type: string
+                    description: 외화예수금액2 String Y 29
+                  frst_bltn_exrt:
+                    type: string
+                    description: 최초고시환율 String Y 31
+                  frcr_buy_mgn_amt:
+                    type: string
+                    description: 외화매수증거금액 String Y 31 매수증거금으로 사용된 외화금액
+                  frcr_etc_mgna:
+                    type: string
+                    description: 외화기타증거금 String Y 31
+                  frcr_drwg_psbl_amt_1:
+                    type: string
+                    description: 외화출금가능금액1 String Y 29 출금가능한 외화금액
+                  frcr_evlu_amt2:
+                    type: string
+                    description: 출금가능원화금액 String Y 29 출금가능한 원화금액
+                  acpl_cstd_crcy_yn:
+                    type: string
+                    description: 현지보관통화여부 String Y 1
+                  nxdy_frcr_drwg_psbl_amt:
+                    type: string
+                    description: 익일외화출금가능금액 String Y 31
+                required:
+                  - crcy_cd
+                  - crcy_cd_name
+                  - frcr_buy_amt_smtl
+                  - frcr_sll_amt_smtl
+                  - frcr_dncl_amt_2
+                  - frst_bltn_exrt
+                  - frcr_buy_mgn_amt
+                  - frcr_etc_mgna
+                  - frcr_drwg_psbl_amt_1
+                  - frcr_evlu_amt2
+                  - acpl_cstd_crcy_yn
+                  - nxdy_frcr_drwg_psbl_amt
+            output3:
+              type: object
+              properties:
+                pchs_amt_smtl:
+                  type: string
+                  description: 매입금액합계 String Y 19 해외유가증권 매수금액의 원화 환산 금액
+                evlu_amt_smtl:
+                  type: string
+                  description: 평가금액합계 String Y 19 해외유가증권 평가금액의 원화 환산 금액
+                evlu_pfls_amt_smtl:
+                  type: string
+                  description: 평가손익금액합계 String Y 19 해외유가증권 평가손익의 원화 환산 금액
+                dncl_amt:
+                  type: string
+                  description: 예수금액 String Y 19
+                cma_evlu_amt:
+                  type: string
+                  description: CMA평가금액 String Y 19
+                tot_dncl_amt:
+                  type: string
+                  description: 총예수금액 String Y 19
+                etc_mgna:
+                  type: string
+                  description: 기타증거금 String Y 19
+                wdrw_psbl_tot_amt:
+                  type: string
+                  description: 인출가능총금액 String Y 19
+                frcr_evlu_tota:
+                  type: string
+                  description: 외화평가총액 String Y 19
+                evlu_erng_rt1:
+                  type: string
+                  description: 평가수익율1 String Y 31
+                pchs_amt_smtl_amt:
+                  type: string
+                  description: 매입금액합계금액 String Y 19
+                evlu_amt_smtl_amt:
+                  type: string
+                  description: 평가금액합계금액 String Y 19
+                tot_evlu_pfls_amt:
+                  type: string
+                  description: 총평가손익금액 String Y 31
+                tot_asst_amt:
+                  type: string
+                  description: 총자산금액 String Y 19
+                buy_mgn_amt:
+                  type: string
+                  description: 매수증거금액 String Y 19
+                mgna_tota:
+                  type: string
+                  description: 증거금총액 String Y 19
+                frcr_use_psbl_amt:
+                  type: string
+                  description: 외화사용가능금액 String Y 20
+                ustl_sll_amt_smtl:
+                  type: string
+                  description: 미결제매도금액합계 String Y 19
+                ustl_buy_amt_smtl:
+                  type: string
+                  description: 미결제매수금액합계 String Y 19
+                tot_frcr_cblc_smtl:
+                  type: string
+                  description: 총외화잔고합계 String Y 29
+                tot_loan_amt:
+                  type: string
+                  description: 총대출금액 String Y 19
+              required:
+                - pchs_amt_smtl
+                - evlu_amt_smtl
+                - evlu_pfls_amt_smtl
+                - dncl_amt
+                - cma_evlu_amt
+                - tot_dncl_amt
+                - etc_mgna
+                - wdrw_psbl_tot_amt
+                - frcr_evlu_tota
+                - evlu_erng_rt1
+                - pchs_amt_smtl_amt
+                - evlu_amt_smtl_amt
+                - tot_evlu_pfls_amt
+                - tot_asst_amt
+                - buy_mgn_amt
+                - mgna_tota
+                - frcr_use_psbl_amt
+                - ustl_sll_amt_smtl
+                - ustl_buy_amt_smtl
+                - tot_frcr_cblc_smtl
+                - tot_loan_amt
+
+    GetOverseasStockPriceResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            output:
+              type: object
+              properties:
+                rsym:
+                  type: string
+                  description: 실시간조회종목코드
+                  maxLength: 16
+                zdiv:
+                  type: string
+                  description: 소수점자리수
+                  maxLength: 1
+                base:
+                  type: string
+                  description: 전일종가
+                  maxLength: 12
+                pvol:
+                  type: string
+                  description: 전일거래량
+                  maxLength: 14
+                last:
+                  type: string
+                  description: 현재가
+                  maxLength: 12
+                sign:
+                  type: string
+                  description: 대비기호 1=상한 2=상승 3=보합 4=하한 5=하락
+                  maxLength: 1
+                diff:
+                  type: string
+                  description: 전일 종가와 당일 현재가의 차이 (당일 현재가-전일 종가)
+                  maxLength: 12
+                rate:
+                  type: string
+                  description: 전일 대비 / 당일 현재가 * 100
+                  maxLength: 12
+                tvol:
+                  type: string
+                  description: 당일 조회시점까지 전체 거래량
+                  maxLength: 14
+                tamt:
+                  type: string
+                  description: 당일 조회시점까지 전체 거래금액
+                  maxLength: 14
+                ordy:
+                  type: string
+                  description: 매수주문 가능 종목 여부
+                  maxLength: 20
+              required:
+                - rsym
+                - zdiv
+                - base
+                - pvol
+                - last
+                - sign
+                - diff
+                - rate
+                - tvol
+                - tamt
+                - ordy
+    GetOverseasOrderListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            ctx_area_fk200:
+              type: string
+              maxLength: 200
+              description: 연속조회검색조건200
+            ctx_area_nk200:
+              type: string
+              maxLength: 200
+              description: 연속조회키200
+            output:
+              type: array
+              items:
+                type: object
+                required:
+                  - ord_dt
+                  - ord_gno_brno
+                  - odno
+                  - orgn_odno
+                  - sll_buy_dvsn_cd
+                  - sll_buy_dvsn_cd_name
+                  - rvse_cncl_dvsn
+                  - rvse_cncl_dvsn_name
+                  - pdno
+                  - prdt_name
+                  - ft_ord_qty
+                  - ft_ord_unpr3
+                  - ft_ccld_qty
+                  - ft_ccld_unpr3
+                  - ft_ccld_amt3
+                  - nccs_qty
+                  - prcs_stat_name
+                  - rjct_rson
+                  - rjct_rson_name
+                  - ord_tmd
+                  - tr_mket_name
+                  - tr_natn
+                  - tr_natn_name
+                  - ovrs_excg_cd
+                  - tr_crcy_cd
+                  - dmst_ord_dt
+                  - thco_ord_tmd
+                  - loan_type_cd
+                  - loan_dt
+                  - mdia_dvsn_name
+                properties:
+                  ord_dt:
+                    type: string
+                    description: 주문일자 주문접수 일자
+                    maxLength: 8
+                  ord_gno_brno:
+                    type: string
+                    description: 주문채번지점번호 계좌 개설 시 관리점으로 선택한 영업점의 고유번호
+                    maxLength: 5
+                  odno:
+                    type: string
+                    description: 주문번호 접수한 주문의 일련번호
+                    maxLength: 10
+                  orgn_odno:
+                    type: string
+                    description: 원주문번호 정정 또는 취소 대상 주문의 일련번호
+                    maxLength: 10
+                  pdno:
+                    type: string
+                    description: 상품번호 종목코드
+                    maxLength: 12
+                  prdt_name:
+                    type: string
+                    description: 상품명 종목명
+                    maxLength: 60
+                  sll_buy_dvsn_cd:
+                    type: string
+                    description: 매도매수구분코드 01=매도 02=매수
+                    maxLength: 2
+                  sll_buy_dvsn_cd_name:
+                    type: string
+                    description: 매도매수구분코드명
+                    maxLength: 60
+                  rvse_cncl_dvsn_cd:
+                    type: string
+                    description: 정정취소구분코드 01=정정 02=취소
+                    maxLength: 2
+                  rvse_cncl_dvsn_cd_name:
+                    type: string
+                    description: 정정취소구분코드명
+                    maxLength: 60
+                  rjct_rson:
+                    type: string
+                    description: 거부사유 정상 처리되지 못하고 거부된 주문의 사유
+                    maxLength: 60
+                  rjct_rson_name:
+                    type: string
+                    description: 거부사유명 정상 처리되지 못하고 거부된 주문의 사유명
+                    maxLength: 60
+                  ord_tmd:
+                    type: string
+                    description: 주문시각 주문 접수 시간
+                    maxLength: 6
+                  tr_mket_name:
+                    type: string
+                    description: 거래시장명
+                    maxLength: 60
+                  tr_crcy_cd:
+                    type: string
+                    description: 거래통화코드 USD=미국달러  HKD=홍콩달러  CNY=중국위안화  JPY=일본엔화  VND=베트남동
+                    maxLength: 3
+                  ft_ord_qty:
+                    type: string
+                    description: 주문수량
+                    maxLength: 10
+                  ft_ccld_qty:
+                    type: string
+                    description: 체결된 수량
+                    maxLength: 10
+                  nccs_qty:
+                    type: string
+                    description: 미체결수량
+                    maxLength: 10
+                  ft_ord_unpr3:
+                    type: string
+                    description: 주문가격
+                    maxLength: 26
+                  ft_ccld_unpr3:
+                    type: string
+                    description: 체결된 가격
+                    maxLength: 26
+                  ft_ccld_amt3:
+                    type: string
+                    description: 체결된 금액
+                    maxLength: 23
+                  ovrs_excg_cd:
+                    type: string
+                    description: 해외거래소코드 NASD=나스닥 NYSE=뉴욕 AMEX=아멕스 SEHK=홍콩 SHAA=중국상해 SZAA=중국심천 TKSE=일본 HASE=베트남 하노이 VNSE=베트남 호치민
+                    maxLength: 4
+                  loan_type_cd:
+                    type: string
+                    description: 대출유형코드 00=해당사항없음  01=자기융자일반형  03=자기융자투자형  05=유통융자일반형  06=유통융자투자형  07=자기대주  09=유통대주  11=주식담보대출  12=수익증권담보대출  13=ELS담보대출  14=채권담보대출  15=해외주식담보대출  16=기업신용공여  31=소액자동담보대출  41=매도담보대출  42=환매자금대출  43=매입환매자금대출  44=대여매도담보대출  81=대차거래  82=법인CMA론  91=공모주청약자금대출  92=매입자금  93=미수론서비스  94=대여
+                    maxLength: 2
+                  loan_dt:
+                    type: string
+                    description: 대출 실행일자
+                    maxLength: 8
+                  tr_natn_cd:
+                    type: string
+                    description: 거래국가
+                    maxLength: 3
+                  tr_natn_name:
+                    type: string
+                    description: 거래국가명
+                    maxLength: 3
+                  mdia_dvsn_name:
+                    type: string
+                    description: 매체구분명
+                    maxLength: 60
+    GetOverseasPossibleOrderResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            output:
+              type: object
+              properties:
+                echm_af_ord_psbl_amt:
+                  type: string
+                  description: 환전이후주문가능금액
+                  maxLength: 21
+                echm_af_ord_psbl_qty:
+                  type: string
+                  description: 환전이후주문가능수량
+                  maxLength: 19
+                exrt:
+                  type: string
+                  description: 환율
+                  maxLength: 22
+                frcr_ord_psbl_amt1:
+                  type: string
+                  description: 외화주문가능금액1
+                  maxLength: 25
+                max_ord_psbl_qty:
+                  type: string
+                  description: 최대주문가능수량
+                  maxLength: 19
+                ord_psbl_frcr_amt:
+                  type: string
+                  description: 주문가능외화금액
+                  maxLength: 21
+                ord_psbl_qty:
+                  type: string
+                  description: 주문가능수량
+                  maxLength: 22
+                ovrs_max_ord_psbl_qty:
+                  type: string
+                  description: 해외최대주문가능수량
+                  maxLength: 19
+                ovrs_ord_psbl_amt:
+                  type: string
+                  description: 해외주문가능금액 매수 시 수량단위 절사해서 사용 예(100주단위) 545 주 -> 500 주 / (10주단위) 545 주 -> 540 주
+                  maxLength: 21
+                sll_ruse_psbl_amt:
+                  type: string
+                  description: 매도재사용가능금액 가능금액 산정 시 사용
+                  maxLength: 21
+                tr_crcy_cd:
+                  type: string
+                  description: 거래통화코드
+                  maxLength: 3
+              required:
+                - echm_af_ord_psbl_amt
+                - echm_af_ord_psbl_qty
+                - exrt
+                - frcr_ord_psbl_amt1
+                - max_ord_psbl_qty
+                - ord_psbl_frcr_amt
+                - ord_psbl_qty
+                - ovrs_max_ord_psbl_qty
+                - ovrs_ord_psbl_amt
+                - sll_ruse_psbl_amt
+                - tr_crcy_cd
+    GetOverseasOpenOrderResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            ctx_area_fk200:
+              type: string
+              maxLength: 200
+              description: 연속조회검색조건200
+            ctx_area_nk200:
+              type: string
+              maxLength: 200
+              description: 연속조회키200
+            output1:
+              type: array
+              items:
+                type: object
+                properties:
+                  ord_dt:
+                    type: string
+                    description: 주문일자 주문접수 일자
+                    maxLength: 8
+                  ord_gno_brno:
+                    type: string
+                    description: 주문채번지점번호 계좌 개설 시 관리점으로 선택한 영업점의 고유번호
+                    maxLength: 5
+                  odno:
+                    type: string
+                    description: 주문번호 접수한 주문의 일련번호
+                    maxLength: 10
+                  orgn_odno:
+                    type: string
+                    description: 원주문번호 정정 또는 취소 대상 주문의 일련번호
+                    maxLength: 10
+                  pdno:
+                    type: string
+                    description: 상품번호 종목코드
+                    maxLength: 12
+                  prdt_name:
+                    type: string
+                    description: 상품명 종목명
+                    maxLength: 60
+                  sll_buy_dvsn_cd:
+                    type: string
+                    description: 매도매수구분코드 01=매도 02=매수
+                    maxLength: 2
+                  sll_buy_dvsn_cd_name:
+                    type: string
+                    description: 매도매수구분코드명
+                    maxLength: 60
+                  rvse_cncl_dvsn_cd:
+                    type: string
+                    description: 정정취소구분코드 01=정정 02=취소
+                    maxLength: 2
+                  rvse_cncl_dvsn_cd_name:
+                    type: string
+                    description: 정정취소구분코드명
+                    maxLength: 60
+                  rjct_rson:
+                    type: string
+                    description: 거부사유 정상 처리되지 못하고 거부된 주문의 사유
+                    maxLength: 60
+                  rjct_rson_name:
+                    type: string
+                    description: 거부사유명 정상 처리되지 못하고 거부된 주문의 사유명
+                    maxLength: 60
+                  ord_tmd:
+                    type: string
+                    description: 주문시각 주문 접수 시간
+                    maxLength: 6
+                  tr_mket_name:
+                    type: string
+                    description: 거래시장명
+                    maxLength: 60
+                  tr_crcy_cd:
+                    type: string
+                    description: 거래통화코드 USD=미국달러  HKD=홍콩달러  CNY=중국위안화  JPY=일본엔화  VND=베트남동
+                    maxLength: 3
+                  natn_cd:
+                    type: string
+                    description: 국가코드
+                    maxLength: 3
+                  natn_kor_name:
+                    type: string
+                    description: 국가한글명
+                    maxLength: 60
+                  ft_ord_qty:
+                    type: string
+                    description: 주문수량
+                    maxLength: 10
+                  ft_ccld_qty:
+                    type: string
+                    description: 체결된 수량
+                    maxLength: 10
+                  nccs_qty:
+                    type: string
+                    description: 미체결수량
+                    maxLength: 10
+                  ft_ord_unpr3:
+                    type: string
+                    description: 주문가격
+                    maxLength: 26
+                  ft_ccld_unpr3:
+                    type: string
+                    description: 체결된 가격
+                    maxLength: 26
+                  ft_ccld_amt3:
+                    type: string
+                    description: 체결된 금액
+                    maxLength: 23
+                  ovrs_excg_cd:
+                    type: string
+                    description: 해외거래소코드 NASD=나스닥 NYSE=뉴욕 AMEX=아멕스 SEHK=홍콩 SHAA=중국상해 SZAA=중국심천 TKSE=일본 HASE=베트남 하노이 VNSE=베트남 호치민
+                    maxLength: 4
+                  prcs_stat_name:
+                    type: string
+                    description: 처리상태명
+                    maxLength: 60
+                  loan_type_cd:
+                    type: string
+                    description: 대출유형코드 00=해당사항없음  01=자기융자일반형  03=자기융자투자형  05=유통융자일반형  06=유통융자투자형  07=자기대주  09=유통대주  11=주식담보대출  12=수익증권담보대출  13=ELS담보대출  14=채권담보대출  15=해외주식담보대출  16=기업신용공여  31=소액자동담보대출  41=매도담보대출  42=환매자금대출  43=매입환매자금대출  44=대여매도담보대출  81=대차거래  82=법인CMA론  91=공모주청약자금대출  92=매입자금  93=미수론서비스  94=대여
+                    maxLength: 2
+                  loan_dt:
+                    type: string
+                    description: 대출 실행일자
+                    maxLength: 8
+                required:
+                  - ord_dt
+                  - ord_gno_brno
+                  - odno
+                  - orgn_odno
+                  - pdno
+                  - prdt_name
+                  - sll_buy_dvsn_cd
+                  - sll_buy_dvsn_cd_name
+                  - rvse_cncl_dvsn_cd
+                  - rvse_cncl_dvsn_cd_name
+                  - rjct_rson
+                  - rjct_rson_name
+                  - ord_tmd
+                  - tr_mket_name
+                  - tr_crcy_cd
+                  - natn_cd
+                  - natn_kor_name
+                  - ft_ord_qty
+                  - ft_ccld_qty
+                  - nccs_qty
+                  - ft_ord_unpr3
+                  - ft_ccld_unpr3
+                  - ft_ccld_amt3
+                  - ovrs_excg_cd
+                  - prcs_stat_name
+                  - loan_type_cd
+                  - loan_dt
+    GetOverseasStockListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            ctx_area_fk200:
+              type: string
+              maxLength: 200
+              description: 연속조회검색조건200
+            ctx_area_nk200:
+              type: string
+              maxLength: 200
+              description: 연속조회키200
+            output1:
+              type: array
+              items:
+                type: object
+                properties:
+                  cano:
+                    type: string
+                    description: 종합계좌번호 계좌번호 체계(8-2)의 앞 8자리
+                    maxLength: 8
+                  acnt_prdt_cd:
+                    type: string
+                    description: 계좌상품코드 계좌상품코드
+                    maxLength: 2
+                  prdt_type_cd:
+                    type: string
+                    description: 상품유형코드
+                    maxLength: 3
+                  ovrs_pdno:
+                    type: string
+                    description: 해외상품번호
+                    maxLength: 12
+                  ovrs_item_name:
+                    type: string
+                    description: 해외종목명
+                    maxLength: 60
+                  frcr_evlu_pfls_amt:
+                    type: string
+                    description: 외화평가손익금액 해당 종목의 매입금액과 평가금액의 외회기준 비교 손익
+                    maxLength: 30
+                  evlu_pfls_rt:
+                    type: string
+                    description: 평가손익율 해당 종목의 평가손익을 기준으로 한 수익률
+                    maxLength: 10
+                  pchs_avg_pric:
+                    type: string
+                    description: 매입평균가격 해당 종목의 매수 평균 단가
+                    maxLength: 23
+                  ovrs_cblc_qty:
+                    type: string
+                    description: 해외잔고수량
+                    maxLength: 19
+                  ord_psbl_qty:
+                    type: string
+                    description: 주문가능수량 매도 가능한 주문 수량
+                    maxLength: 10
+                  frcr_pchs_amt1:
+                    type: string
+                    description: 외화매입금액1 해당 종목의 외화 기준 매입금액
+                    maxLength: 23
+                  ovrs_stck_evlu_amt:
+                    type: string
+                    description: 해외주식평가금액 해당 종목의 외화 기준 평가금액
+                    maxLength: 32
+                  now_pric2:
+                    type: string
+                    description: 현재가격2
+                    maxLength: 25
+                  tr_crcy_cd:
+                    type: string
+                    description: 거래통화코드 USD=미국달러 HKD=홍콩달러 CNY=중국위안화 JPY=일본엔화 VND=베트남동
+                    maxLength: 3
+                  ovrs_excg_cd:
+                    type: string
+                    description: 해외거래소코드 NASD=나스닥 NYSE=뉴욕 AMEX=아멕스 SEHK=홍콩 SHAA=중국상해 SZAA=중국심천 TKSE=일본 HASE=하노이거래소 VNSE=호치민거래소
+                    maxLength: 3
+                  loan_type_cd:
+                    type: string
+                    description: 대출유형코드 00=해당사항없음  01=자기융자일반형  03=자기융자투자형  05=유통융자일반형  06=유통융자투자형  07=자기대주  09=유통대주  11=주식담보대출  12=수익증권담보대출  13=ELS담보대출  14=채권담보대출  15=해외주식담보대출  16=기업신용공여  31=소액자동담보대출  41=매도담보대출  42=환매자금대출  43=매입환매자금대출  44=대여매도담보대출  81=대차거래  82=법인CMA론  91=공모주청약자금대출  92=매입자금  93=미수론서비스  94=대여
+                    maxLength: 2
+                  loan_dt:
+                    type: string
+                    description: 대출 실행일자
+                    maxLength: 8
+                  expd_dt:
+                    type: string
+                    description: 대출 만기일자
+                    maxLength: 8
+                required:
+                  - cano
+                  - acnt_prdt_cd
+                  - prdt_type_cd
+                  - ovrs_pdno
+                  - ovrs_item_name
+                  - frcr_evlu_pfls_amt
+                  - evlu_pfls_rt
+                  - pchs_avg_pric
+                  - ovrs_cblc_qty
+                  - ord_psbl_qty
+                  - frcr_pchs_amt1
+                  - ovrs_stck_evlu_amt
+                  - now_pric2
+                  - tr_crcy_cd
+                  - ovrs_excg_cd
+                  - loan_type_cd
+                  - loan_dt
+                  - expd_dt
+            output2:
+              type: object
+              properties:
+                frcr_pchs_amt1:
+                  type: string
+                  description: 외화매입금액1
+                  maxLength: 24
+                ovrs_rlzt_pfls_amt:
+                  type: string
+                  description: 해외실현손익금액
+                  maxLength: 20
+                ovrs_tot_pfls:
+                  type: string
+                  description: 해외총손익
+                  maxLength: 24
+                rlzt_erng_rt:
+                  type: string
+                  description: 실현수익율
+                  maxLength: 32
+                tot_evlu_pfls_amt:
+                  type: string
+                  description: 총평가손익금액
+                  maxLength: 32
+                tot_pftrt:
+                  type: string
+                  description: 총수익률
+                  maxLength: 32
+                frcr_buy_amt_smtl1:
+                  type: string
+                  description: 외화매수금액합계1
+                  maxLength: 25
+                ovrs_rlzt_pfls_amt2:
+                  type: string
+                  description: 해외실현손익금액2
+                  maxLength: 24
+                frcr_buy_amt_smtl2:
+                  type: string
+                  description: 외화매수금액합계2
+                  maxLength: 25
+              required:
+                - frcr_pchs_amt1
+                - ovrs_rlzt_pfls_amt
+                - ovrs_tot_pfls
+                - rlzt_erng_rt
+                - tot_evlu_pfls_amt
+                - tot_pftrt
+                - frcr_buy_amt_smtl1
+                - ovrs_rlzt_pfls_amt2
+                - frcr_buy_amt_smtl2
+    GetDomesticStockPossibleOrderResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            output:
+              type: object
+              properties:
+                ord_psbl_cash:
+                  type: string
+                  description: 주문가능현금
+                  maxLength: 19
+                ord_psbl_sbst:
+                  type: string
+                  description: 주문가능대용
+                  maxLength: 19
+                ruse_psbl_amt:
+                  type: string
+                  description: 재사용가능금액
+                  maxLength: 19
+                fund_rpch_chgs:
+                  type: string
+                  description: 펀드환매대금
+                  maxLength: 19
+                psbl_qty_calc_unpr:
+                  type: string
+                  description: 가능수량계산단가
+                  maxLength: 19
+                nrcvb_buy_amt:
+                  type: string
+                  description: 미수없는매수금액
+                  maxLength: 19
+                nrcvb_buy_qty:
+                  type: string
+                  description: 미수없는매수수량
+                  maxLength: 10
+                max_buy_amt:
+                  type: string
+                  description: 최대매수금액
+                  maxLength: 19
+                max_buy_qty:
+                  type: string
+                  description: 최대매수수량
+                  maxLength: 10
+                cma_evlu_amt:
+                  type: string
+                  description: CMA평가금액
+                  maxLength: 19
+                ovrs_re_use_amt_wcrc:
+                  type: string
+                  description: 해외재사용금액원화
+                  maxLength: 19
+                ord_psbl_frcr_amt_wcrc:
+                  type: string
+                  description: 주문가능외화금액원화
+                  maxLength: 19
+              required:
+                - ord_psbl_cash
+                - ord_psbl_sbst
+                - ruse_psbl_amt
+                - fund_rpch_chgs
+                - psbl_qty_calc_unpr
+                - nrcvb_buy_amt
+                - nrcvb_buy_qty
+                - max_buy_amt
+                - max_buy_qty
+                - cma_evlu_amt
+                - ovrs_re_use_amt_wcrc
+                - ord_psbl_frcr_amt_wcrc
+    CreateOrderResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            output:
+              type: object
+              properties:
+                KRX_FWDG_ORD_ORGNO:
+                  type: string
+                  description: 한국거래소전송주문조직번호 주문시 한국투자증권 시스템에서 지정된 영업점코드
+                  maxLength: 5
+                ODNO:
+                  type: string
+                  maxLength: 10
+                  description: 주문번호 주문시 한국투자증권 시스템에서 채번된 주문번호
+                ORD_TMD:
+                  type: string
+                  maxLength: 6
+                  description: 주문시각(시분초HHMMSS)
+              required:
+                - ODNO
+                - ORD_TMD
+                - KRX_FWDG_ORD_ORGNO
+          example:
+            rt_cd: 0
+            msg_cd: APBK0013
+            msg1: 주문 전송 완료 되었습니다.
+            output:
+              KRX_FWDG_ORD_ORGNO: "06010"
+              ODNO: "0001569157"
+              ORD_TMD: "155211"
+
+    CreateDomesticOrderRequest:
+      type: object
+      properties:
+        CANO:
+          type: string
+          maxLength: 8
+          description: 종합계좌번호 - 계좌번호 체계(8-2)의 앞 8자리
+          example: 810XXXXX
+        ACNT_PRDT_CD:
+          type: string
+          maxLength: 2
+          description: 계좌상품코드 - 계좌번호 체계(8-2)의 뒤 2자리
+          example: "01"
+        PDNO:
+          type: string
+          maxLength: 12
+          description: 종목코드(6자리)
+          example: "009150"
+        ORD_DVSN:
+          type: string
+          maxLength: 2
+          description: 주문구분 00=지정가 01=시장가 02=조건부지정가 03=최유리지정가 04=최우선지정가 05=장전 시간외 06=장후 시간외 07=시간외 단일가 08=자기주식 09=자기주식S-Option 10=자기주식금전신탁 11=IOC지정가 (즉시체결,잔량취소) 12=FOK지정가 (즉시체결,전량취소) 13=IOC시장가 (즉시체결,잔량취소) 14=FOK시장가 (즉시체결,전량취소) 15=IOC최유리 (즉시체결,잔량취소) 16=FOK최유리 (즉시체결,전량취소)
+          enum:
+            - "00"
+            - "01"
+            - "02"
+            - "03"
+            - "04"
+            - "05"
+            - "06"
+            - "07"
+            - "08"
+            - "09"
+            - "10"
+            - "11"
+            - "12"
+            - "13"
+            - "14"
+            - "15"
+            - "16"
+          example: "00"
+        ORD_QTY:
+          type: string
+          maxLength: 10
+          description: 주문수량 - 주문주식수
+          example: "1"
+        ORD_UNPR:
+          type: string
+          maxLength: 19
+          description: 주문단가 - 1주당 가격 장전 시간외, 장후 시간외, 시장가의 경우 1주당 가격을 공란으로 비우지 않음 "0"으로 입력 권고
+          example: "0"
+        ALGO_NO:
+          type: string
+          maxLength: 10
+          deprecated: true
+          description: 알고리즘번호
+      required:
+        - CANO
+        - ACNT_PRDT_CD
+        - PDNO
+        - ORD_DVSN
+        - ORD_QTY
+        - ORD_UNPR
+    CreateOverseasOrderRequest:
+      type: object
+      properties:
+        CANO:
+          type: string
+          description: 종합계좌번호 계좌번호 체계(8-2)의 앞 8자리
+          maxLength: 8
+        ACNT_PRDT_CD:
+          type: string
+          description: 계좌상품코드 계좌번호 체계(8-2)의 뒤 2자리
+          maxLength: 2
+        OVRS_EXCG_CD:
+          type: string
+          description: 해외거래소코드 NASD=나스닥 NYSE=뉴욕 AMEX=아멕스 SEHK=홍콩 SHAA=중국상해 SZAA=중국심천 TKSE=일본 HASE=베트남 하노이 VNSE=베트남 호치민
+          maxLength: 4
+        PDNO:
+          type: string
+          description: 종목코드
+          maxLength: 12
+        ORD_QTY:
+          type: string
+          description: 주문수량 (해외거래소 별 최소 주문수량 및 주문단위 확인 필요)
+          maxLength: 10
+        OVRS_ORD_UNPR:
+          type: string
+          description: 1주당 가격 시장가의 경우 1주당 가격을 공란으로 비우지 않음 "0"으로 입력
+          maxLength: 31
+        # ORD_SVR_DVSN_CD:
+        # ORD_DVSN:
+      required:
+        - CANO
+        - ACNT_PRDT_CD
+        - OVRS_EXCG_CD
+        - PDNO
+        - ORD_QTY
+        - OVRS_ORD_UNPR
+    CreateTokenRequest:
+      type: object
+      properties:
+        grant_type:
+          type: string
+          description: client_credentials
+          maxLength: 18
+          enum:
+            - client_credentials
+          default: client_credentials
+        appkey:
+          type: string
+          description: 한국투자증권 홈페이지에서 발급받은 appkey (절대 노출되지 않도록 주의해주세요.)
+          maxLength: 36
+          example: PSg5dctL9dKPo727J13Ur405OSXXXXXXXXXX
+        appsecret:
+          type: string
+          description: 한국투자증권 홈페이지에서 발급받은 appsecret (절대 노출되지 않도록 주의해주세요.)
+          maxLength: 180
+          example: yo2t8zS68zpdjGuWvFyM9VikjXE0i0CbgPEamnqPA00G0bIfrdfQb2RUD1xP7SqatQXr1cD1fGUNsb78MMXoq6o4lAYt9YTtHAjbMoFy+c72kbq5owQY1Pvp39/x6ejpJlXCj7gE3yVOB/h25Hvl+URmYeBTfrQeOqIAOYc/OIXXXXXXXXXX
+      required:
+        - grant_type
+        - appkey
+        - appsecret
+    GetDomesticCancelableOrderResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            ctx_area_fk100:
+              type: string
+              description: 연속조회검색조건100
+              maxLength: 100
+            ctx_area_nk100:
+              type: string
+              description: 연속조회키100
+              maxLength: 100
+            output:
+              type: array
+              items:
+                type: object
+                required:
+                  - ord_gno_brno
+                  - odno
+                  - orgn_odno
+                  - ord_dvsn_name
+                  - pdno
+                  - prdt_name
+                  - rvse_cncl_dvsn_name
+                  - ord_qty
+                  - ord_unpr
+                  - ord_tmd
+                  - tot_ccld_qty
+                  - tot_ccld_amt
+                  - psbl_qty
+                  - sll_buy_dvsn_cd
+                  - ord_dvsn_cd
+                  - mgco_aptm_odno
+                properties:
+                  ord_gno_brno:
+                    type: string
+                    description: 주문채번지점번호 주문시 한국투자증권 시스템에서 지정된 영업점코드
+                    maxLength: 5
+                  odno:
+                    type: string
+                    description: 주문번호 주문시 한국투자증권 시스템에서 채번된 주문번호
+                    maxLength: 10
+                  orgn_odno:
+                    type: string
+                    description: 원주문번호 이전 주문에 채번된 주문번호
+                    maxLength: 10
+                  ord_dvsn_name:
+                    type: string
+                    description: 주문구분명
+                    maxLength: 60
+                  pdno:
+                    type: string
+                    description: 상품번호 종목번호(뒤 6자리만 해당)
+                    maxLength: 12
+                  prdt_name:
+                    type: string
+                    description: 상품명 종목명
+                    maxLength: 60
+                  rvse_cncl_dvsn_name:
+                    type: string
+                    description: 정정취소구분명 정정 또는 취소 여부 표시
+                    maxLength: 60
+                  ord_qty:
+                    type: string
+                    description: 주문수량
+                    maxLength: 10
+                  ord_unpr:
+                    type: string
+                    description: 주문단가 1주당 주문가격
+                    maxLength: 19
+                  ord_tmd:
+                    type: string
+                    description: 주문시각(시분초HHMMSS)
+                    maxLength: 6
+                  tot_ccld_qty:
+                    type: string
+                    description: 총체결수량 주문 수량 중 체결된 수량
+                    maxLength: 10
+                  tot_ccld_amt:
+                    type: string
+                    description: 총체결금액 주문금액 중 체결금액
+                    maxLength: 19
+                  psbl_qty:
+                    type: string
+                    description: 가능수량 정정/취소 주문 가능 수량
+                    maxLength: 10
+                  sll_buy_dvsn_cd:
+                    type: string
+                    description: 매도매수구분코드 01=매도 02=매수
+                    maxLength: 2
+                  ord_dvsn_cd:
+                    type: string
+                    description: 주문구분코드 00=지정가 01=시장가 02=조건부지정가 03=최유리지정가 04=최우선지정가 05=장전 시간외 06=장후 시간외 07=시간외 단일가 08=자기주식 09=자기주식S-Option 10=자기주식금전신탁 11=IOC지정가 (즉시체결,잔량취소) 12=FOK지정가 (즉시체결,전량취소) 13=IOC시장가 (즉시체결,잔량취소) 14=FOK시장가 (즉시체결,전량취소) 15=IOC최유리 (즉시체결,잔량취소) 16=FOK최유리 (즉시체결,전량취소) 51=장중대량
+                    maxLength: 2
+                  mgco_aptm_odno:
+                    type: string
+                    description: 운용사지정주문번호 주문 번호 (운용사 통한 주문)
+                    maxLength: 12
+
+    GetDomesticOrderListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            ctx_area_fk100:
+              type: string
+              description: 연속조회검색조건100
+              maxLength: 100
+            ctx_area_nk100:
+              type: string
+              description: 연속조회키100
+              maxLength: 100
+            output1:
+              type: array
+              items:
+                type: object
+                properties:
+                  ord_dt:
+                    type: string
+                    description: 주문일자
+                    maxLength: 8
+                  ord_gno_brno:
+                    type: string
+                    description: 주문채번지점번호 주문시 한국투자증권 시스템에서 지정된 영업점코드
+                    maxLength: 5
+                  odno:
+                    type: string
+                    description: 주문번호 주문시 한국투자증권 시스템에서 채번된 주문번호
+                    maxLength: 10
+                  orgn_odno:
+                    type: string
+                    description: 원주문번호 이전 주문에 채번된 주문번호
+                    maxLength: 10
+                  ord_dvsn_name:
+                    type: string
+                    description: 주문구분명
+                    maxLength: 60
+                  sll_buy_dvsn_cd:
+                    type: string
+                    description: 매도매수구분코드 01=매도 02=매수
+                    maxLength: 2
+                  sll_buy_dvsn_cd_name:
+                    type: string
+                    description: 매도매수구분코드명
+                    maxLength: 60
+                  pdno:
+                    type: string
+                    description: 상품번호 종목번호(6자리)
+                    maxLength: 12
+                  prdt_name:
+                    type: string
+                    description: 상품명 종목명
+                    maxLength: 60
+                  ord_qty:
+                    type: string
+                    description: 주문수량
+                    maxLength: 10
+                  ord_unpr:
+                    type: string
+                    description: 주문단가
+                    maxLength: 19
+                  ord_tmd:
+                    type: string
+                    description: 주문시각
+                    maxLength: 6
+                  tot_ccld_qty:
+                    type: string
+                    description: 총체결수량
+                    maxLength: 10
+                  avg_prvs:
+                    type: string
+                    description: 체결평균가 ( 총체결금액 / 총체결수량 )
+                    maxLength: 19
+                  cncl_yn:
+                    type: string
+                    description: 취소여부
+                    maxLength: 1
+                  tot_ccld_amt:
+                    type: string
+                    description: 총체결금액
+                    maxLength: 19
+                  loan_dt:
+                    type: string
+                    description: 대출일자
+                    maxLength: 8
+                  ord_dvsn_cd:
+                    type: string
+                    description: 주문구분코드 00=지정가 01=시장가 02=조건부지정가 03=최유리지정가 04=최우선지정가 05=장전 시간외 06=장후 시간외 07=시간외 단일가 08=자기주식 09=자기주식S-Option 10=자기주식금전신탁 11=IOC지정가 (즉시체결,잔량취소) 12=FOK지정가 (즉시체결,전량취소) 13=IOC시장가 (즉시체결,잔량취소) 14=FOK시장가 (즉시체결,전량취소) 15=IOC최유리 (즉시체결,잔량취소) 16=FOK최유리 (즉시체결,전량취소)
+                    maxLength: 2
+                  cncl_cfrm_qty:
+                    type: string
+                    description: 취소확인수량
+                    maxLength: 10
+                  rmn_qty:
+                    type: string
+                    description: 잔여수량
+                    maxLength: 10
+                  rjct_qty:
+                    type: string
+                    description: 거부수량
+                    maxLength: 10
+                  ccld_cndt_name:
+                    type: string
+                    description: 체결조건명
+                    maxLength: 10
+                  prdt_type_cd:
+                    type: string
+                    description: 상품유형코드 300=주식 301=선물옵션 302=채권 306=ELS
+                    maxLength: 3
+                  ctac_tlno:
+                    type: string
+                    description: 연락전화번호
+                    maxLength: 20
+                  excg_dvsn_cd:
+                    type: string
+                    description: 거래소구분코드 01=한국증권 02=증권거래소 03=코스닥 04=K-OTC 05=선물거래소 06=CME 07=EUREX 21=금현물 51=홍콩 52=상해B 53=심천 54=홍콩거래소 55=미국 56=일본 57=상해A 58=심천A 59=베트남 61=장전시간외시장 64=경쟁대량매매 65=경매매시장 81=시간외단일가시장
+                    maxLength: 2
+                  inqr_ip_addr:
+                    type: string
+                    description: UNKNOWN
+                  ordr_empno:
+                    type: string
+                    description: UNKNOWN
+                  cpbc_ordp_ord_rcit_dvsn_cd:
+                    type: string
+                    description: UNKNOWN
+                  cpbc_ordp_infm_mthd_dvsn_cd:
+                    type: string
+                    description: UNKNOWN
+                  infm_tmd:
+                    type: string
+                    description: UNKNOWN
+                  cpbc_ordp_mtrl_dvsn_cd:
+                    type: string
+                    description: UNKNOWN
+                  ord_orgno:
+                    type: string
+                    description: UNKNOWN
+                  rsvn_ord_end_dt:
+                    type: string
+                    description: UNKNOWN
+                required:
+                  - ord_dt
+                  - ord_gno_brno
+                  - odno
+                  - orgn_odno
+                  - ord_dvsn_name
+                  - sll_buy_dvsn_cd
+                  - sll_buy_dvsn_cd_name
+                  - pdno
+                  - prdt_name
+                  - ord_qty
+                  - ord_unpr
+                  - ord_tmd
+                  - tot_ccld_qty
+                  - avg_prvs
+                  - cncl_yn
+                  - tot_ccld_amt
+                  - loan_dt
+                  - ordr_empno
+                  - ord_dvsn_cd
+                  - cncl_cfrm_qty
+                  - rmn_qty
+                  - rjct_qty
+                  - ccld_cndt_name
+                  - inqr_ip_addr
+                  - cpbc_ordp_ord_rcit_dvsn_cd
+                  - cpbc_ordp_infm_mthd_dvsn_cd
+                  - infm_tmd
+                  - ctac_tlno
+                  - prdt_type_cd
+                  - excg_dvsn_cd
+                  - cpbc_ordp_mtrl_dvsn_cd
+                  - ord_orgno
+                  - rsvn_ord_end_dt
+            outout2:
+              type: object
+              properties:
+                tot_ord_qty:
+                  type: string
+                  maxLength: 10
+                  description: 총주문수량 미체결주문수량 + 체결수량 (취소주문제외)
+                tot_ccld_qty:
+                  type: string
+                  maxLength: 10
+                  description: 총체결수량
+                tot_ccld_amt:
+                  type: string
+                  maxLength: 19
+                  description: 총체결금액
+                prsm_tlex_smtl:
+                  type: string
+                  maxLength: 19
+                  description: 추정제비용합계 제세 + 주문수수료
+                pchs_avg_pric:
+                  type: string
+                  maxLength: 22
+                  description: 매입평균가격 총체결금액 / 총체결수량
+              required:
+                - tot_ord_qty
+                - tot_ccld_qty
+                - tot_ccld_amt
+                - prsm_tlex_smtl
+                - pchs_avg_pric
+    GetDomesticStockListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BasicResponse"
+        - type: object
+          properties:
+            ctx_area_fk100:
+              type: string
+              description: 연속조회검색조건100
+              maxLength: 100
+            ctx_area_nk100:
+              type: string
+              description: 연속조회키100
+              maxLength: 100
+            output1:
+              type: array
+              items:
+                type: object
+                properties:
+                  pdno:
+                    type: string
+                    description: 상품번호 종목번호(뒷 6자리)
+                    maxLength: 12
+                  prdt_name:
+                    type: string
+                    description: 상품명 종목명
+                    maxLength: 60
+                  trad_dvsn_name:
+                    type: string
+                    description: 매매구분명 매수매도구분
+                    maxLength: 60
+                  bfdy_buy_qty:
+                    type: string
+                    description: 전일매수수량
+                    maxLength: 10
+                  bfdy_sll_qty:
+                    type: string
+                    description: 전일매도수량
+                    maxLength: 10
+                  thdt_buyqty:
+                    type: string
+                    description: 금일매수수량
+                    maxLength: 10
+                  thdt_sll_qty:
+                    type: string
+                    description: 금일매도수량
+                    maxLength: 10
+                  hldg_qty:
+                    type: string
+                    description: 보유수량
+                    maxLength: 10
+                  ord_psbl_qty:
+                    type: string
+                    description: 주문가능수량
+                    maxLength: 10
+                  pchs_avg_pric:
+                    type: string
+                    description: 매입평균가격 (매입금액 / 보유수량)
+                    maxLength: 22
+                  pchs_amt:
+                    type: string
+                    description: 매입금액
+                    maxLength: 19
+                  prpr:
+                    type: string
+                    description: 현재가
+                    maxLength: 19
+                  evlu_amt:
+                    type: string
+                    description: 평가금액
+                    maxLength: 19
+                  evlu_pfls_amt:
+                    type: string
+                    description: 평가손익금액 (평가금액 - 매입금액)
+                    maxLength: 19
+                  evlu_pfls_rt:
+                    type: string
+                    description: 평가손익율
+                    maxLength: 9
+                  evlu_erng_rt:
+                    type: string
+                    description: 평가수익율
+                    maxLength: 31
+                  loan_dt:
+                    type: string
+                    description: 대출일자
+                    maxLength: 8
+                  loan_amt:
+                    type: string
+                    description: 대출금액
+                    maxLength: 19
+                  stln_slng_chgs:
+                    type: string
+                    description: 대주매각대금
+                    maxLength: 19
+                  expd_dt:
+                    type: string
+                    description: 만기일자
+                    maxLength: 8
+                  rate: # fltt_rt:
+                    type: string
+                    description: 등락율
+                    maxLength: 31
+                  bfdy_cprs_icdc:
+                    type: string
+                    description: 전일대비증감
+                    maxLength: 19
+                  item_mgna_rt_name:
+                    type: string
+                    description: 종목증거금율명
+                    maxLength: 20
+                  grta_rt_name:
+                    type: string
+                    description: 보증금율명
+                    maxLength: 20
+                  sbst_pric:
+                    type: string
+                    description: 대용가격 증권매매의 위탁보증금으로서 현금 대신에 사용되는 유가증권 가격
+                    maxLength: 19
+                  stck_loan_unpr:
+                    type: string
+                    description: 주식대출단가
+                    maxLength: 22
+                required:
+                  - pdno
+                  - prdt_name
+                  - trad_dvsn_name
+                  - bfdy_buy_qty
+                  - bfdy_sll_qty
+                  - thdt_buyqty
+                  - thdt_sll_qty
+                  - hldg_qty
+                  - ord_psbl_qty
+                  - pchs_avg_pric
+                  - pchs_amt
+                  - prpr
+                  - evlu_amt
+                  - evlu_pfls_amt
+                  - evlu_pfls_rt
+                  - evlu_erng_rt
+                  - loan_dt
+                  - loan_amt
+                  - stln_slng_chgs
+                  - expd_dt
+                  # - fltt_rt
+                  - rate
+                  - bfdy_cprs_icdc
+                  - item_mgna_rt_name
+                  - grta_rt_name
+                  - sbst_pric
+                  - stck_loan_unpr
+            output2:
+              type: array
+              items:
+                type: object
+                properties:
+                  dnca_tot_amt:
+                    type: string
+                    description: 예수금총금액
+                    maxLength: 19
+                  nxdy_excc_amt:
+                    type: string
+                    description: 익일정산금액
+                    maxLength: 19
+                  prvs_rcdl_excc_amt:
+                    type: string
+                    description: 가수도정산금액
+                    maxLength: 19
+                  cma_evlu_amt:
+                    type: string
+                    description: CMA평가금액
+                    maxLength: 19
+                  bfdy_buy_amt:
+                    type: string
+                    description: 전일매수금액
+                    maxLength: 19
+                  thdt_buy_amt:
+                    type: string
+                    description: 금일매수금액
+                    maxLength: 19
+                  nxdy_auto_rdpt_amt:
+                    type: string
+                    description: 익일자동상환금액
+                    maxLength: 19
+                  bfdy_sll_amt:
+                    type: string
+                    description: 전일매도금액
+                    maxLength: 19
+                  thdt_sll_amt:
+                    type: string
+                    description: 금일매도금액
+                    maxLength: 19
+                  d2_auto_rdpt_amt:
+                    type: string
+                    description: D+2자동상환금액
+                    maxLength: 19
+                  bfdy_tlex_amt:
+                    type: string
+                    description: 전일제비용금액
+                    maxLength: 19
+                  thdt_tlex_amt:
+                    type: string
+                    description: 금일제비용금액
+                    maxLength: 19
+                  tot_loan_amt:
+                    type: string
+                    description: 총대출금액
+                    maxLength: 19
+                  scts_evlu_amt:
+                    type: string
+                    description: 유가평가금액
+                    maxLength: 19
+                  tot_evlu_amt:
+                    type: string
+                    description: 총평가금액
+                    maxLength: 19
+                  nass_amt:
+                    type: string
+                    description: 순자산금액
+                    maxLength: 19
+                  fncg_gld_auto_rdpt_yn:
+                    type: string
+                    description: 융자금자동상환여부 보유현금에 대한 융자금만 차감여부 신용융자 매수체결 시점에서는 융자비율을 매매대금 100%로 계산 하였다가 수도결제일에 보증금에 해당하는 금액을 고객의 현금으로 충당하여 융자금을 감소시키는 업무
+                    maxLength: 1
+                  pchs_amt_smtl_amt:
+                    type: string
+                    description: 매입금액합계금액
+                    maxLength: 19
+                  evlu_amt_smtl_amt:
+                    type: string
+                    description: 평가금액합계금액
+                    maxLength: 19
+                  evlu_pfls_smtl_amt:
+                    type: string
+                    description: 평가손익합계금액
+                    maxLength: 19
+                  tot_stln_slng_chgs:
+                    type: string
+                    description: 총대주매각대금
+                    maxLength: 19
+                  bfdy_tot_asst_evlu_amt:
+                    type: string
+                    description: 전일총자산평가금액
+                    maxLength: 19
+                  asst_icdc_amt:
+                    type: string
+                    description: 자산증감액
+                    maxLength: 19
+                  asst_icdc_erng_rt:
+                    type: string
+                    description: 자산증감수익율 데이터 미제공
+                    maxLength: 31
+                required:
+                  - dnca_tot_amt
+                  - nxdy_excc_amt
+                  - prvs_rcdl_excc_amt
+                  - cma_evlu_amt
+                  - bfdy_buy_amt
+                  - thdt_buy_amt
+                  - nxdy_auto_rdpt_amt
+                  - bfdy_sll_amt
+                  - thdt_sll_amt
+                  - d2_auto_rdpt_amt
+                  - bfdy_tlex_amt
+                  - thdt_tlex_amt
+                  - tot_loan_amt
+                  - scts_evlu_amt
+                  - tot_evlu_amt
+                  - nass_amt
+                  - fncg_gld_auto_rdpt_yn
+                  - pchs_amt_smtl_amt
+                  - evlu_amt_smtl_amt
+                  - evlu_pfls_smtl_amt
+                  - tot_stln_slng_chgs
+                  - bfdy_tot_asst_evlu_amt
+                  - asst_icdc_amt
+                  - asst_icdc_erng_rt
+          required:
+            - ctx_area_fk100
+            - ctx_area_nk100
+            - output1
+            - output2
+    CreateHashKeyResponse:
+      type: object
+      properties:
+        HASH:
+          type: string
+          example: 8b84068222a49302f7ef58226d90403f62e216828f8103465f900de0e7be2f0f
+        BODY:
+          type: object
+          example:
+            ORD_PRCS_DVSN_CD: 02
+            CANO: 계좌번호
+            ACNT_PRDT_CD: 03
+            SLL_BUY_DVSN_CD: 02
+            SHTN_PDNO: 101S06
+            ORD_QTY: 1
+            UNIT_PRICE: 370
+            NMPR_TYPE_CD: ""
+            KRX_NMPR_CNDT_CD: ""
+            CTAC_TLNO: ""
+            FUOP_ITEM_DVSN_CD: ""
+            ORD_DVSN_CD: 02
+      required:
+        - HASH
+        - BODY
